@@ -8,7 +8,6 @@
  *)
 
 open Lwt_react
-open Lwt
 
 let section = Lwt_log.Section.make "obus(object)"
 
@@ -251,10 +250,10 @@ let execute (type d) method_info context obj arguments =
                     (OBus_value.arg_types
                        (OBus_member.Method.i_args M.info))))))
   in
-  with_value OBus_context.key (Some context)
+  Lwt.with_value OBus_context.key (Some context)
     (fun () ->
        lwt reply = M.handler obj arguments in
-       return (OBus_value.C.make_sequence (OBus_value.arg_types (OBus_member.Method.o_args M.info)) reply))
+       Lwt.return (OBus_value.C.make_sequence (OBus_value.arg_types (OBus_member.Method.o_args M.info)) reply))
 
 (* Dispatch a method call to the implementation of the method *)
 let dispatch context obj interface member arguments =
@@ -361,9 +360,9 @@ let handle_message connection info message =
                           lwt result =
                             try_lwt
                               lwt obj = M.get context path in
-                              return (`Success obj)
+                              Lwt.return (`Success obj)
                             with exn ->
-                              return (`Failure exn)
+                              Lwt.return (`Failure exn)
                           in
                           match result with
                             | `Success obj ->
@@ -403,7 +402,7 @@ let handle_message connection info message =
                       "method call handler for method %S on interface %S failed with"
                       member interface
                   else
-                    return ()
+                    Lwt.return ()
                 in
                 send_error context exn
         end;
@@ -536,9 +535,9 @@ let emit obj ~interface ~member ?peer typ x =
           M.sender = "";
           M.body = body;
         } in
-        join (Connection_set.fold
-                (fun connection l -> OBus_connection.send_message connection signal :: l)
-                (S.value obj.exports) [])
+        Lwt.join (Connection_set.fold
+                    (fun connection l -> OBus_connection.send_message connection signal :: l)
+                    (S.value obj.exports) [])
 
 (* +-----------------------------------------------------------------+
    | Property change notifications                                   |
@@ -546,7 +545,7 @@ let emit obj ~interface ~member ?peer typ x =
 
 let notify_properties_change (type d) obj interface_name changed index =
   (* Sleep a bit, so multiple changes are sent only one time. *)
-  lwt () = pause () in
+  lwt () = Lwt.pause () in
   let members = changed.(index) in
   changed.(index) <- String_map.empty;
   try_lwt
@@ -793,7 +792,7 @@ let introspectable (type d) () =
            OBus_introspect.output
              (Xmlm.make_output ~nl:true ~indent:(Some 2) (`Buffer buf))
              (introspect obj, children info obj.path);
-           return (Buffer.contents buf)
+           Lwt.return (Buffer.contents buf)
        end in
        (module M : Method_info with type obj = d t));
     |]
@@ -834,7 +833,7 @@ let properties (type d) () =
                        match obj.properties.(i).(j) with
                          | Some instance ->
                              let module I = (val instance : Property_instance) in
-                             return (OBus_value.C.make_single (Property.typ I.info) (S.value I.signal))
+                             Lwt.return (OBus_value.C.make_single (Property.typ I.info) (S.value I.signal))
                          | None ->
                              raise_lwt (OBus_error.Failed(Printf.sprintf "Property %S on interface %S is not readable" member interface))
        end in
@@ -876,7 +875,7 @@ let properties (type d) () =
                        | None ->
                            loop (j + 1) acc
                  in
-                 return (loop 0 [])
+                 Lwt.return (loop 0 [])
        end in
        (module M : Method_info with type obj = d t));
 
@@ -1007,7 +1006,7 @@ let attach obj data =
               export (OBus_peer.connection peer) obj;
               ignore (lwt () = OBus_peer.wait_for_exit peer in
                       destroy obj;
-                      return ())
+                      Lwt.return ())
 
 let get obj =
   match obj.data with

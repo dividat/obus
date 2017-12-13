@@ -10,7 +10,7 @@
 let section = Lwt_log.Section.make "obus(connection)"
 
 open Lwt_react
-open Lwt
+open Lwt.Infix
 
 (* +-----------------------------------------------------------------+
    | Exceptions                                                      |
@@ -176,25 +176,25 @@ let cleanup active ~is_crash =
 
   (* This make the dispatcher to exit if it is waiting on
      [get_message] *)
-  wakeup_exn active.abort_recv_wakener Connection_closed;
+  Lwt.wakeup_exn active.abort_recv_wakener Connection_closed;
   begin
     match S.value active.down with
       | Some(waiter, wakener) ->
-          wakeup_exn wakener Connection_closed
+          Lwt.wakeup_exn wakener Connection_closed
       | None ->
           ()
   end;
 
   (* Wakeup all reply handlers so they will not wait forever *)
-  Serial_map.iter (fun _ wakener -> wakeup_exn wakener Connection_closed) active.reply_waiters;
+  Serial_map.iter (fun _ wakener -> Lwt.wakeup_exn wakener Connection_closed) active.reply_waiters;
 
   (* If the connection is closed normally, flush it *)
   lwt () =
     if not is_crash then
-      Lwt_mutex.with_lock active.outgoing_mutex return
+      Lwt_mutex.with_lock active.outgoing_mutex Lwt.return
     else begin
-      wakeup_exn active.abort_send_wakener Connection_closed;
-      return ()
+      Lwt.wakeup_exn active.abort_send_wakener Connection_closed;
+      Lwt.return ()
     end
   in
 
@@ -207,7 +207,7 @@ let cleanup active ~is_crash =
 let close connection =
   match connection#state with
     | Killed | Closed ->
-        return ()
+        Lwt.return ()
     | Active active ->
         connection#set_state Closed;
         cleanup active ~is_crash:false
@@ -215,7 +215,7 @@ let close connection =
 let kill connection exn =
   match connection#state with
     | Killed | Closed ->
-        return ()
+        Lwt.return ()
     | Active active ->
         connection#set_state Killed;
         lwt () = cleanup active ~is_crash:true in
@@ -255,33 +255,33 @@ let send_message_backend connection gen_serial reply_waiter_opt message =
                  match reply_waiter_opt with
                    | Some(waiter, wakener) ->
                        active.reply_waiters <- Serial_map.add (OBus_message.serial message) wakener active.reply_waiters;
-                       on_cancel waiter (fun () ->
-                                           match connection#state with
-                                             | Killed | Closed ->
-                                                 ()
-                                             | Active active ->
-                                                 active.reply_waiters <- Serial_map.remove (OBus_message.serial message) active.reply_waiters)
+                       Lwt.on_cancel waiter (fun () ->
+                                               match connection#state with
+                                                 | Killed | Closed ->
+                                                     ()
+                                                 | Active active ->
+                                                     active.reply_waiters <- Serial_map.remove (OBus_message.serial message) active.reply_waiters)
                    | None ->
                        ()
                end;
 
                try_lwt
-                 lwt () = choose [active.abort_send_waiter;
-                                  (* Do not cancel a thread while it is marshaling message: *)
-                                  protected (OBus_transport.send active.transport message)] in
+                 lwt () = Lwt.choose [active.abort_send_waiter;
+                                      (* Do not cancel a thread while it is marshaling message: *)
+                                      Lwt.protected (OBus_transport.send active.transport message)] in
                  (* Everything went OK, continue with a new serial *)
                  if gen_serial then active.next_serial <- Int32.succ active.next_serial;
-                 return ()
+                 Lwt.return ()
                with
                  | OBus_wire.Data_error _ as exn ->
                      (* The message can not be marshaled for some
                         reason. This is not a fatal error. *)
                      raise_lwt exn
 
-                 | Canceled ->
+                 | Lwt.Canceled ->
                      (* Message sending have been canceled by the
                         user. This is not a fatal error either. *)
-                     raise_lwt Canceled
+                     raise_lwt Lwt.Canceled
 
                  | exn ->
                      (* All other errors are considered as fatal. They
@@ -295,13 +295,13 @@ let send_message_backend connection gen_serial reply_waiter_opt message =
            | Killed | Closed ->
                raise_lwt Connection_closed
            | Active _ ->
-               return ())
+               Lwt.return ())
 
 let send_message connection message =
   send_message_backend connection true None message
 
 let send_message_with_reply connection message =
-  let (waiter, wakener) as v = task () in
+  let (waiter, wakener) as v = Lwt.task () in
   lwt () = send_message_backend connection true (Some v) message in
   waiter
 
@@ -309,7 +309,7 @@ let send_message_keep_serial connection message =
   send_message_backend connection false None message
 
 let send_message_keep_serial_with_reply connection message =
-  let (waiter, wakener) as v = task () in
+  let (waiter, wakener) as v = Lwt.task () in
   lwt () = send_message_backend connection false (Some v) message in
   waiter
 
@@ -330,7 +330,7 @@ let method_call_with_message ~connection ?destination ~path ?interface ~member ~
   match o_msg with
     | { OBus_message.typ = OBus_message.Method_return _; body } -> begin
         try
-          return (o_msg, OBus_value.C.cast_sequence o_args body)
+          Lwt.return (o_msg, OBus_value.C.cast_sequence o_args body)
         with OBus_value.C.Signature_mismatch ->
           raise_lwt (OBus_message.invalid_reply i_msg (OBus_value.C.type_sequence o_args) o_msg)
       end
@@ -371,8 +371,8 @@ let dispatch_message active message =
         match try Some(Serial_map.find reply_serial active.reply_waiters) with Not_found -> None with
           | Some w ->
               active.reply_waiters <- Serial_map.remove reply_serial active.reply_waiters;
-              wakeup w message;
-              return ()
+              Lwt.wakeup w message;
+              Lwt.return ()
           | None ->
               Lwt_log.debug_f ~section "reply to message with serial %ld dropped%s"
                 reply_serial
@@ -393,11 +393,11 @@ let dispatch_message active message =
           lwt body =
             match member, body with
               | "Ping", [] ->
-                  return []
+                  Lwt.return []
               | "GetMachineId", [] -> begin
                   try_lwt
                     lwt uuid = Lazy.force OBus_info.machine_uuid in
-                    return [OBus_value.V.basic_string (OBus_uuid.to_string uuid)]
+                    Lwt.return [OBus_value.V.basic_string (OBus_uuid.to_string uuid)]
                   with exn ->
                     if OBus_error.name exn = OBus_error.ocaml then
                       raise_lwt
@@ -438,7 +438,7 @@ let dispatch_message active message =
 
     | _ ->
         (* Other messages are handled by specifics modules *)
-        return ()
+        Lwt.return ()
 
 let rec dispatch_forever active =
   lwt () =
@@ -447,11 +447,11 @@ let rec dispatch_forever active =
       | Some(waiter, wakener) ->
           waiter
       | None ->
-          return ()
+          Lwt.return ()
   in
   lwt message =
     try_lwt
-      choose [OBus_transport.recv active.transport; active.abort_recv_waiter]
+      Lwt.choose [OBus_transport.recv active.transport; active.abort_recv_waiter]
     with exn ->
       lwt () = kill active.wrapper (Transport_error exn) in
       raise_lwt exn
@@ -507,12 +507,12 @@ let of_transport ?switch ?guid ?(up=true) transport =
     let abort_recv_waiter, abort_recv_wakener = Lwt.wait ()
     and abort_send_waiter, abort_send_wakener = Lwt.wait ()
     and connection = new connection ()
-    and down, set_down = S.create (if up then None else Some(wait ())) in
+    and down, set_down = S.create (if up then None else Some(Lwt.wait ())) in
     let state = S.map (function None -> `Up | Some _ -> `Down) down in
     let active = {
       name = "";
       transport;
-      on_disconnect = (fun exn -> return ());
+      on_disconnect = (fun exn -> Lwt.return ());
       guid;
       down;
       set_down;
@@ -556,21 +556,21 @@ let of_addresses ?switch ?(shared=true) addresses =
   match shared with
     | false ->
         lwt guid, transport = OBus_transport.of_addresses ~capabilities addresses in
-        return (of_transport ?switch transport)
+        Lwt.return (of_transport ?switch transport)
     | true ->
         (* Try to find a guid that we already have *)
         let guids = OBus_util.filter_map OBus_address.guid addresses in
         match OBus_util.find_map (fun guid -> try Some(Guid_map.find guid !guid_connection_map) with Not_found -> None) guids with
           | Some connection ->
               Lwt_switch.add_hook switch (fun () -> close connection);
-              return connection
+              Lwt.return connection
           | None ->
               (* We ask again a shared connection even if we know that
                  there is no other connection to a server with the same
                  guid, because during the authentication another
                  thread can add a new connection. *)
               lwt guid, transport = OBus_transport.of_addresses ~capabilities addresses in
-              return (of_transport ?switch ~guid transport)
+              Lwt.return (of_transport ?switch ~guid transport)
 
 let loopback () = of_transport (OBus_transport.loopback ())
 
@@ -653,7 +653,7 @@ let set_up connection =
         ()
     | Some(waiter, wakener) ->
         active.set_down None;
-        wakeup wakener ()
+        Lwt.wakeup wakener ()
 
 let set_down connection =
   let active = connection#get in
@@ -661,7 +661,7 @@ let set_down connection =
     | Some _ ->
         ()
     | None ->
-        active.set_down (Some(wait ()))
+        active.set_down (Some(Lwt.wait ()))
 
 let incoming_filters connection = connection#get.incoming_filters
 let outgoing_filters connection = connection#get.outgoing_filters

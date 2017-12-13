@@ -10,7 +10,6 @@
 let section = Lwt_log.Section.make "obus(resolver)"
 
 open Lwt_react
-open Lwt
 
 module String_map = Map.Make(String)
 
@@ -79,7 +78,7 @@ let get_name_owner connection name =
       ~o_args:(OBus_value.C.seq1 OBus_value.C.basic_string)
       name
   with exn when OBus_error.name exn = "org.freedesktop.DBus.Error.NameHasNoOwner" ->
-    return ""
+    Lwt.return ""
 
 (* Handle NameOwnerChanged events *)
 let update_mapping info message =
@@ -97,7 +96,7 @@ let update_mapping info message =
         end;
 
         begin
-          match try state (String_map.find name info.resolvers) with Not_found -> Sleep with
+          match try Lwt.state (String_map.find name info.resolvers) with Not_found -> Sleep with
             | Return(resolver, switch) ->
                 resolver.set_owner new_owner
             | Fail _ | Sleep ->
@@ -130,14 +129,14 @@ let make ?switch connection name =
   (* If [name] is a unique name and the peer has already exited, then
      there is nothing to do: *)
   if OBus_name.is_unique name && has_exited name info then
-    return (S.const "")
+    Lwt.return (S.const "")
   else begin
     lwt resolver, export_switch =
       match try Some(String_map.find name info.resolvers) with Not_found -> None with
         | Some thread ->
             thread
         | None ->
-            let waiter, wakener = wait () in
+            let waiter, wakener = Lwt.wait () in
             info.resolvers <- String_map.add name waiter info.resolvers;
             let export_switch = Lwt_switch.create () in
             try_lwt
@@ -156,11 +155,11 @@ let make ?switch connection name =
               lwt current_owner = get_name_owner connection name in
               let owner, set_owner = S.create current_owner in
               let resolver = { count = 0; owner; set_owner } in
-              wakeup wakener (resolver, export_switch);
-              return (resolver, export_switch)
+              Lwt.wakeup wakener (resolver, export_switch);
+              Lwt.return (resolver, export_switch)
             with exn ->
               info.resolvers <- String_map.remove name info.resolvers;
-              wakeup_exn wakener exn;
+              Lwt.wakeup_exn wakener exn;
               lwt () = Lwt_switch.turn_off export_switch in
               raise_lwt exn
     in
@@ -175,7 +174,7 @@ let make ?switch connection name =
           info.resolvers <- String_map.remove name info.resolvers;
           Lwt_switch.turn_off export_switch
         end else
-          return ()
+          Lwt.return ()
       with exn ->
         lwt () = Lwt_log.warning_f ~section ~exn "failed to disable resolver for name %S" name in
         raise_lwt exn
@@ -191,5 +190,5 @@ let make ?switch connection name =
            Lazy.force remove)
     in
 
-    return owner
+    Lwt.return owner
   end

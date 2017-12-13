@@ -11,7 +11,7 @@ let section = Lwt_log.Section.make "obus(transport)"
 
 open Unix
 open Printf
-open Lwt
+open Lwt.Infix
 open OBus_address
 
 (* +-----------------------------------------------------------------+
@@ -57,8 +57,8 @@ let socket ?switch ?(capabilities=[]) fd =
                       Lwt_unix.shutdown fd SHUTDOWN_ALL;
                       Lwt_unix.close fd) }
     else
-      let ic = Lwt_io.of_fd ~mode:Lwt_io.input ~close:return fd
-      and oc = Lwt_io.of_fd ~mode:Lwt_io.output ~close:return fd in
+      let ic = Lwt_io.of_fd ~mode:Lwt_io.input ~close:Lwt.return fd
+      and oc = Lwt_io.of_fd ~mode:Lwt_io.output ~close:Lwt.return fd in
       { recv = (fun _ -> OBus_wire.read_message ic);
         send = (fun msg -> OBus_wire.write_message oc msg);
         capabilities = capabilities;
@@ -79,7 +79,7 @@ let loopback () =
   { recv = (fun _ -> Lwt_mvar.take mvar);
     send = (fun m -> Lwt_mvar.put mvar { m with OBus_message.body = OBus_value.V.sequence_dup (OBus_message.body m) });
     capabilities = [`Unix_fd];
-    shutdown = return }
+    shutdown = Lwt.return }
 
 (* +-----------------------------------------------------------------+
    | Addresses -> transport                                          |
@@ -90,7 +90,7 @@ let make_socket domain typ addr =
   (try Lwt_unix.set_close_on_exec fd with _ -> ());
   try_lwt
     lwt () = Lwt_unix.connect fd addr in
-    return (fd, domain)
+    Lwt.return (fd, domain)
   with exn ->
     lwt () = Lwt_unix.close fd in
     raise_lwt exn
@@ -101,7 +101,7 @@ let rec write_nonce fd nonce pos len =
         raise_lwt (Failure "OBus_transport.connect: failed to send the nonce to the server")
     | n ->
         if n = len then
-          return ()
+          Lwt.return ()
         else
           write_nonce fd nonce (pos + n) (len - n)
 
@@ -124,7 +124,7 @@ let make_socket_nonce nonce_file domain typ addr =
         else begin
           lwt fd, domain = make_socket domain typ addr in
           lwt () = write_nonce fd nonce 0 16 in
-          return (fd, domain)
+          Lwt.return (fd, domain)
         end
 
 let rec connect address =
@@ -159,7 +159,7 @@ let rec connect address =
         in
         Lwt_unix.getaddrinfo host port opts >>= function
           | [] ->
-              fail
+              Lwt.fail
                 (Failure
                    (Printf.sprintf
                       "OBus_transport.connect: no address info for host=%s port=%s%s"
@@ -218,7 +218,7 @@ let rec connect address =
           in
           let line = try String.sub line 0 (String.index line '\000') with _ -> line in
           try_lwt
-            return (OBus_address.of_string line)
+            Lwt.return (OBus_address.of_string line)
           with OBus_address.Parse_failure(addr, pos, reason) as exn ->
             lwt () = Lwt_log.error_f ~section "autolaunch returned an invalid address %S, at position %d: %s" addr pos reason in
             raise_lwt exn
@@ -283,7 +283,7 @@ let of_addresses ?switch ?(capabilities=OBus_auth.capabilities) ?mechanisms addr
                     ~stream:(OBus_auth.stream_of_fd fd)
                     ()
                 in
-                return (guid, socket ?switch ~capabilities fd)
+                Lwt.return (guid, socket ?switch ~capabilities fd)
             | n ->
                 assert false
         with exn ->

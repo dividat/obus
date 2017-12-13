@@ -400,8 +400,6 @@ let compare_rules r1 r2 =
    | Exporting rules on message buses                                |
    +-----------------------------------------------------------------+ *)
 
-open Lwt
-
 module String_set = Set.Make(String)
 
 (* Informations stored in connections *)
@@ -446,7 +444,7 @@ let do_export info rule_string =
       rule_string
   in
   info.exported <- String_set.add rule_string info.exported;
-  return ()
+  Lwt.return ()
 
 let do_remove info rule_string =
   info.exported <- String_set.remove rule_string info.exported;
@@ -486,7 +484,7 @@ let commit info =
        let threads = String_set.fold (fun rule acc -> do_export info rule :: acc) new_rules threads in
        let threads = String_set.fold (fun rule acc -> do_remove info rule :: acc) old_rules threads in
 
-       join threads)
+       Lwt.join threads)
 
 let key = OBus_connection.new_key ()
 
@@ -520,4 +518,4 @@ let export ?switch connection rule =
          info.rules <- remove_first rule info.rules;
          commit info)
   in
-  return ()
+  Lwt.return ()

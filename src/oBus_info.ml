@@ -9,8 +9,6 @@
 
 let section = Lwt_log.Section.make "obus(info)"
 
-open Lwt
-
 let version = OBus_config.version
 
 let protocol_version = 1
@@ -20,7 +18,7 @@ let max_message_size = OBus_protocol.max_message_size
 let read_uuid_file file =
   try_lwt
     lwt line = Lwt_io.with_file ~mode:Lwt_io.input file Lwt_io.read_line in
-    return (OBus_uuid.of_string line)
+    Lwt.return (OBus_uuid.of_string line)
   with exn ->
     ignore (Lwt_log.error_f ~section ~exn "failed to read the local machine uuid from file %S" file);
     raise_lwt exn

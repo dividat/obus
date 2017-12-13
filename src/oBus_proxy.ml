@@ -9,7 +9,6 @@
 
 let section = Lwt_log.Section.make "obus(proxy)"
 
-open Lwt
 open OBus_peer
 open OBus_message
 
@@ -69,7 +68,7 @@ let call_with_context proxy ~interface ~member ~i_args ~o_args args =
       ~o_args
       args
   in
-  return (OBus_context.make proxy.peer.connection msg, result)
+  Lwt.return (OBus_context.make proxy.peer.connection msg, result)
 
 let call_no_reply proxy ~interface ~member ~i_args args =
   OBus_connection.method_call_no_reply
@@ -93,6 +92,6 @@ let introspect proxy =
       ()
   in
   try
-    return (OBus_introspect.input (Xmlm.make_input ~strip:true (`String(0, str))))
+    Lwt.return (OBus_introspect.input (Xmlm.make_input ~strip:true (`String(0, str))))
   with Xmlm.Error((line, column), err) ->
     raise_lwt (Failure(Printf.sprintf "OBus_proxy.introspect: invalid document, at line %d: %s" line (Xmlm.error_message err)))

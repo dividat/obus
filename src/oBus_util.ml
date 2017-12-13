@@ -9,7 +9,6 @@
 
 let section = Lwt_log.Section.make "obus(util)"
 
-open Lwt
 open Printf
 
 let rec assoc x = function
@@ -89,10 +88,10 @@ let hex_decode hex =
 
 let homedir = lazy(
   try
-    return (Sys.getenv "HOME")
+    Lwt.return (Sys.getenv "HOME")
   with Not_found ->
     lwt pwd = Lwt_unix.getpwuid (Unix.getuid ()) in
-    return pwd.Unix.pw_dir
+    Lwt.return pwd.Unix.pw_dir
 )
 
 let init_pseudo = Lazy.from_fun Random.self_init

@@ -8,7 +8,6 @@
  *)
 
 open Lwt_react
-open Lwt
 
 type t = {
   connection : OBus_connection.t;
@@ -35,7 +34,7 @@ let ping peer =
       ~o_args:OBus_value.C.seq0
       ()
   in
-  return { peer with name = OBus_message.sender reply }
+  Lwt.return { peer with name = OBus_message.sender reply }
 
 let get_machine_id peer =
   lwt mid =
@@ -50,7 +49,7 @@ let get_machine_id peer =
       ()
   in
   try
-    return (OBus_uuid.of_string mid)
+    Lwt.return (OBus_uuid.of_string mid)
   with exn ->
     raise_lwt exn
 
@@ -66,7 +65,7 @@ let wait_for_exit peer =
         else
           try_lwt
             lwt _ = E.next (E.filter ((=) "") (S.changes owner)) in
-            return ()
+            Lwt.return ()
           finally
             Lwt_switch.turn_off switch
 

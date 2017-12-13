@@ -10,7 +10,7 @@
 let section = Lwt_log.Section.make "obus(property)"
 
 open Lwt_react
-open Lwt
+open Lwt.Infix
 open OBus_interfaces.Org_freedesktop_DBus_Properties
 
 (* +-----------------------------------------------------------------+
@@ -103,14 +103,14 @@ let default_monitor proxy interface switch =
          (OBus_signal.with_context
             (OBus_signal.make s_PropertiesChanged proxy)))
   and context, dict = get_all_no_cache proxy interface in
-  return (S.map snd
-            (S.fold_s ~eq:(fun (_, a) (_, b) -> String_map.equal (=) a b)
-               (fun (_, map) (sig_context, (interface, updates, invalidates)) ->
-                  if invalidates = [] then
-                    return (sig_context, update_map sig_context updates map)
-                  else
-                    lwt context, dict = get_all_no_cache proxy interface in
-                    return (sig_context, map_of_list context dict))
+  Lwt.return (S.map snd
+                (S.fold_s ~eq:(fun (_, a) (_, b) -> String_map.equal (=) a b)
+                   (fun (_, map) (sig_context, (interface, updates, invalidates)) ->
+                      if invalidates = [] then
+                        Lwt.return (sig_context, update_map sig_context updates map)
+                      else
+                        lwt context, dict = get_all_no_cache proxy interface in
+                        Lwt.return (sig_context, map_of_list context dict))
                (context, map_of_list context dict)
                event))
 
@@ -237,14 +237,14 @@ let get_with_context prop =
         with
           | Some cache_thread ->
               lwt cache = cache_thread in
-              return (find_with_context prop (S.value cache.c_map))
+              Lwt.return (find_with_context prop (S.value cache.c_map))
           | None ->
               lwt context, value = OBus_method.call_with_context m_Get prop.p_proxy (prop.p_interface, prop.p_member) in
-              return (context, prop.p_cast context value)
+              Lwt.return (context, prop.p_cast context value)
       end
     | None ->
         lwt context, value = OBus_method.call_with_context m_Get prop.p_proxy (prop.p_interface, prop.p_member) in
-        return (context, prop.p_cast context value)
+        Lwt.return (context, prop.p_cast context value)
 
 let get prop =
   get_with_context prop >|= snd
@@ -265,14 +265,14 @@ let get_group group =
         with
           | Some cache_thread ->
               lwt cache = cache_thread in
-              return (S.value cache.c_map)
+              Lwt.return (S.value cache.c_map)
           | None ->
               lwt context, dict = get_all_no_cache group.g_proxy group.g_interface in
-              return (map_of_list context dict)
+              Lwt.return (map_of_list context dict)
       end
     | None ->
         lwt context, dict = get_all_no_cache group.g_proxy group.g_interface in
-        return (map_of_list context dict)
+        Lwt.return (map_of_list context dict)
 
 (* +-----------------------------------------------------------------+
    | Monitoring                                                      |
@@ -303,7 +303,7 @@ let monitor_group ?switch group =
       | Some cache_thread ->
           cache_thread
       | None ->
-          let waiter, wakener = wait () in
+          let waiter, wakener = Lwt.wait () in
           info.cache <- Group_map.add cache_key waiter info.cache;
           let switch = Lwt_switch.create () in
           try_lwt
@@ -313,11 +313,11 @@ let monitor_group ?switch group =
               c_map = signal;
               c_switch = switch;
             } in
-            wakeup wakener cache;
-            return cache
+            Lwt.wakeup wakener cache;
+            Lwt.return cache
           with exn ->
             info.cache <- Group_map.remove cache_key info.cache;
-            wakeup_exn wakener exn;
+            Lwt.wakeup_exn wakener exn;
             lwt () = Lwt_switch.turn_off switch in
             raise_lwt exn
   in
@@ -331,7 +331,7 @@ let monitor_group ?switch group =
         info.cache <- Group_map.remove cache_key info.cache;
         Lwt_switch.turn_off cache.c_switch
       end else
-        return ()
+        Lwt.return ()
     with exn ->
       lwt () =
         Lwt_log.warning_f
@@ -355,10 +355,10 @@ let monitor_group ?switch group =
          Lazy.force disable)
   in
 
-  return signal
+  Lwt.return signal
 
 let monitor ?switch prop =
   lwt signal = monitor_group ?switch { g_interface = prop.p_interface;
                                        g_proxy = prop.p_proxy;
                                        g_monitor = prop.p_monitor } in
-  return (S.map (find prop) signal)
+  Lwt.return (S.map (find prop) signal)

@@ -10,7 +10,6 @@
 let section = Lwt_log.Section.make "obus(wire)"
 
 open Printf
-open Lwt
 open OBus_value
 open OBus_message
 open OBus_protocol
@@ -852,7 +851,7 @@ type writer = {
 let close_writer writer = Lwt_io.close writer.w_channel
 
 let writer fd = {
-  w_channel = Lwt_io.of_fd ~mode:Lwt_io.output ~close:return fd;
+  w_channel = Lwt_io.of_fd ~mode:Lwt_io.output ~close:Lwt.return fd;
   w_file_descr = fd;
 }
 
@@ -1207,7 +1206,7 @@ let read_message ic =
            let buffer = Bytes.create length in
            lwt () = Lwt_io.read_into_exactly ic buffer 0 length in
            let buffer = Bytes.unsafe_to_string buffer in
-           f { buf = buffer; ofs = 0; max = length; fds = [||] } None return)
+           f { buf = buffer; ofs = 0; max = length; fds = [||] } None Lwt.return)
     end ic
   with exn ->
     raise (map_exn protocol_error exn)
@@ -1255,7 +1254,7 @@ let reader fd =
          List.iter (fun fd ->
                       (try Unix.set_close_on_exec fd with _ -> ());
                       Queue.push fd pending_fds) fds;
-         return n);
+         Lwt.return n);
     r_pending_fds = pending_fds;
   }
 
@@ -1276,7 +1275,7 @@ let read_message_with_fds reader  =
            let buffer = Bytes.create length in
            lwt () = Lwt_io.read_into_exactly ic buffer 0 length in
            let buffer = Bytes.unsafe_to_string buffer in
-           f { buf = buffer; ofs = 0; max = length; fds = [||] } (Some(consumed_fds, reader.r_pending_fds)) return)
+           f { buf = buffer; ofs = 0; max = length; fds = [||] } (Some(consumed_fds, reader.r_pending_fds)) Lwt.return)
     end reader.r_channel
   with exn ->
     lwt () =

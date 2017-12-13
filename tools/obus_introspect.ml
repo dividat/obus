@@ -26,8 +26,6 @@ let usage_msg = Printf.sprintf "Usage: %s <option> <destination> <path>
 Introspect a D-Bus service (print only interfaces).
 options are:" (Filename.basename (Sys.argv.(0)))
 
-open Lwt
-
 module Interface_map = Map.Make(struct type t = string let compare = compare end)
 
 let rec get proxy =
@@ -41,14 +39,14 @@ let rec get proxy =
         List.fold_left
           (fun t1 t2 ->
              lwt nodes1, map1 = t1 and nodes2, map2 = t2 in
-             return (nodes1 @ nodes2, Interface_map.fold Interface_map.add map1 map2))
-          (return (nodes, map))
+             Lwt.return (nodes1 @ nodes2, Interface_map.fold Interface_map.add map1 map2))
+          (Lwt.return (nodes, map))
           (List.map
              (fun child ->
                 get { proxy with OBus_proxy.path = OBus_proxy.path proxy @ [child] })
              children)
     | false ->
-        return (nodes, map)
+        Lwt.return (nodes, map)
 
 let main service path =
   lwt bus = match !session, !system, !address with
@@ -76,7 +74,7 @@ let main service path =
             print_newline ();
           end nodes
   end;
-  return ()
+  Lwt.return ()
 
 let () =
   Arg.parse args
@@ -91,5 +89,5 @@ let () =
     Lwt_main.run (main service path)
   with
     | OBus_introspect.Parse_failure((line, column), msg) ->
-        ignore_result (Lwt_io.eprintlf "invalid introspection document returned by the service!:%d:%d: %s" line column msg);
+        Lwt.ignore_result (Lwt_io.eprintlf "invalid introspection document returned by the service!:%d:%d: %s" line column msg);
         exit 1

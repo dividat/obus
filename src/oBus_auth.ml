@@ -10,7 +10,7 @@
 let section = Lwt_log.Section.make "obus(auth)"
 
 open Printf
-open Lwt
+open Lwt.Infix
 
 type capability = [ `Unix_fd ]
 
@@ -93,12 +93,12 @@ end = struct
 
   let keyring_directory = lazy(
     lwt homedir = Lazy.force OBus_util.homedir in
-    return (Filename.concat homedir ".dbus-keyrings")
+    Lwt.return (Filename.concat homedir ".dbus-keyrings")
   )
 
   let keyring_file_name context =
     lwt dir = Lazy.force keyring_directory in
-    return (Filename.concat dir context)
+    Lwt.return (Filename.concat dir context)
 
   let parse_line line =
     Scanf.sscanf line "%ld %Ld %[a-fA-F0-9]"
@@ -119,7 +119,7 @@ end = struct
         lwt () = Lwt_log.error_f ~exn ~section "failed to load cookie file %s" fname in
         raise_lwt exn
     else
-      return []
+      Lwt.return []
 
   let lock_file fname =
     let really_lock () =
@@ -175,7 +175,7 @@ end = struct
           lwt () = Lwt_log.error_f ~section "failed to create directory %s with permissions 0600: %s" dir (Unix.error_message error) in
           raise_lwt exn
       end else
-        return ()
+        Lwt.return ()
     in
     lwt () = lock_file lock_fname in
     try_lwt
@@ -239,7 +239,7 @@ let stream_of_channels (ic, oc) =
                    | Some ch ->
                        Buffer.add_char buf ch;
                        if last = '\r' && ch = '\n' then
-                         return (Buffer.contents buf)
+                         Lwt.return (Buffer.contents buf)
                        else
                          loop ch
              in
@@ -263,7 +263,7 @@ let stream_of_fd fd =
                        let ch = Bytes.get tmp 0 in
                        Buffer.add_char buf ch;
                        if last = '\r' && ch = '\n' then
-                         return (Buffer.contents buf)
+                         Lwt.return (Buffer.contents buf)
                        else
                          loop ch
                    | n ->
@@ -273,7 +273,7 @@ let stream_of_fd fd =
     ~send:(fun line ->
              let rec loop ofs len =
                if len = 0 then
-                 return ()
+                 Lwt.return ()
                else
                  Lwt_unix.write_string fd line ofs len >>= function
                    | 0 ->
@@ -294,7 +294,7 @@ let rec recv_line stream =
   if len < 2 || not (line.[len - 2] = '\r' && line.[len - 1] = '\n') then
     raise_lwt (Auth_failure("input: invalid line received"))
   else
-    return (String.sub line 0 (len - 2))
+    Lwt.return (String.sub line 0 (len - 2))
 
 let rec first f str pos =
   if pos = String.length str then
@@ -351,7 +351,7 @@ let rec recv mode command_parser stream =
     with exn ->
       `Failure(exn)
   with
-    | `Success x -> return x
+    | `Success x -> Lwt.return x
     | `Failure(Failure msg) ->
         lwt () = send_line mode stream ("ERROR \"" ^ msg ^ "\"") in
         recv mode command_parser stream
@@ -413,7 +413,7 @@ struct
 
   class virtual mechanism_handler = object
     method virtual init : mechanism_return Lwt.t
-    method data (chall : data) = return (Mech_error("no data expected for this mechanism"))
+    method data (chall : data) = Lwt.return (Mech_error("no data expected for this mechanism"))
     method abort = ()
   end
 
@@ -431,16 +431,16 @@ struct
 
   class mech_external_handler = object
     inherit mechanism_handler
-    method init = return (Mech_ok(string_of_int (Unix.getuid ())))
+    method init = Lwt.return (Mech_ok(string_of_int (Unix.getuid ())))
   end
 
   class mech_anonymous_handler = object
     inherit mechanism_handler
-    method init = return (Mech_ok("obus " ^ OBus_info.version))
+    method init = Lwt.return (Mech_ok("obus " ^ OBus_info.version))
   end
 
   class mech_dbus_cookie_sha1_handler = object
-    method init = return (Mech_continue(string_of_int (Unix.getuid ())))
+    method init = Lwt.return (Mech_continue(string_of_int (Unix.getuid ())))
     method data chal =
       lwt () = Lwt_log.debug_f ~section "client: dbus_cookie_sha1: chal: %s" chal in
       let context, id, chal = Scanf.sscanf chal "%[^/\\ \n\r.] %ld %[a-fA-F0-9]%!" (fun context id chal -> (context, id, chal)) in
@@ -454,7 +454,7 @@ struct
       let rand = hex_encode (OBus_util.random_string 16) in
       let resp = sprintf "%s %s" rand (hex_encode (OBus_util.sha_1 (sprintf "%s:%s:%s" chal rand cookie.Cookie.cookie))) in
       lwt () = Lwt_log.debug_f ~section "client: dbus_cookie_sha1: resp: %s" resp in
-      return (Mech_ok resp)
+      Lwt.return (Mech_ok resp)
     method abort = ()
   end
 
@@ -493,7 +493,7 @@ struct
   let find_working_mech implemented_mechanisms available_mechanisms =
     let rec aux = function
       | [] ->
-          return Failure
+          Lwt.return Failure
       | { mech_name = name; mech_exec =  f } :: mechs ->
           match available_mechanisms with
             | Some l when not (List.mem name l) ->
@@ -503,13 +503,13 @@ struct
                 try_lwt
                   mech#init >>= function
                     | Mech_continue resp ->
-                        return (Transition(Client_auth(Some (name, Some resp)),
-                                           Waiting_for_data mech,
-                                           mechs))
+                        Lwt.return (Transition(Client_auth(Some (name, Some resp)),
+                                               Waiting_for_data mech,
+                                               mechs))
                     | Mech_ok resp ->
-                        return (Transition(Client_auth(Some (name, Some resp)),
-                                           Waiting_for_ok,
-                                           mechs))
+                        Lwt.return (Transition(Client_auth(Some (name, Some resp)),
+                                               Waiting_for_ok,
+                                               mechs))
                     | Mech_error msg ->
                         aux mechs
                 with exn ->
@@ -527,59 +527,59 @@ struct
               try_lwt
                 mech#data chal >>= function
                   | Mech_continue resp ->
-                      return (Transition(Client_data resp,
-                                         Waiting_for_data mech,
-                                         mechs))
+                      Lwt.return (Transition(Client_data resp,
+                                             Waiting_for_data mech,
+                                             mechs))
                   | Mech_ok resp ->
-                      return (Transition(Client_data resp,
-                                         Waiting_for_ok,
-                                         mechs))
+                      Lwt.return (Transition(Client_data resp,
+                                             Waiting_for_ok,
+                                             mechs))
                   | Mech_error msg ->
-                      return (Transition(Client_error msg,
-                                         Waiting_for_data mech,
-                                         mechs))
+                      Lwt.return (Transition(Client_error msg,
+                                             Waiting_for_data mech,
+                                             mechs))
               with exn ->
-                return (Transition(Client_error(Printexc.to_string exn),
-                                   Waiting_for_data mech,
-                                   mechs))
+                Lwt.return (Transition(Client_error(Printexc.to_string exn),
+                                       Waiting_for_data mech,
+                                       mechs))
             end
         | Server_rejected am ->
             mech#abort;
             next mechs am
         | Server_error _ ->
             mech#abort;
-            return (Transition(Client_cancel,
-                               Waiting_for_reject,
-                               mechs))
+            Lwt.return (Transition(Client_cancel,
+                                   Waiting_for_reject,
+                                   mechs))
         | Server_ok guid ->
             mech#abort;
-            return (Success guid)
+            Lwt.return (Success guid)
         | Server_agree_unix_fd ->
             mech#abort;
-            return (Transition(Client_error "command not expected here",
-                               Waiting_for_data mech,
-                               mechs))
+            Lwt.return (Transition(Client_error "command not expected here",
+                                   Waiting_for_data mech,
+                                   mechs))
       end
 
     | Waiting_for_ok -> begin match cmd with
         | Server_ok guid ->
-            return (Success guid)
+            Lwt.return (Success guid)
         | Server_rejected am ->
             next mechs am
         | Server_data _
         | Server_error _ ->
-            return (Transition(Client_cancel,
-                               Waiting_for_reject,
-                               mechs))
+            Lwt.return (Transition(Client_cancel,
+                                   Waiting_for_reject,
+                                   mechs))
         | Server_agree_unix_fd ->
-            return (Transition(Client_error "command not expected here",
-                               Waiting_for_ok,
-                               mechs))
+            Lwt.return (Transition(Client_error "command not expected here",
+                                   Waiting_for_ok,
+                                   mechs))
       end
 
     | Waiting_for_reject -> begin match cmd with
         | Server_rejected am -> next mechs am
-        | _ -> return Failure
+        | _ -> Lwt.return Failure
       end
 
   let authenticate ?(capabilities=[]) ?(mechanisms=default_mechanisms) ~stream () =
@@ -594,18 +594,18 @@ struct
               lwt () = client_send stream Client_negotiate_unix_fd in
               client_recv stream >>= function
                 | Server_agree_unix_fd ->
-                    return [`Unix_fd]
+                    Lwt.return [`Unix_fd]
                 | Server_error _ ->
-                    return []
+                    Lwt.return []
                 | _ ->
                     (* This case is not covered by the
                        specification *)
-                    return []
+                    Lwt.return []
             else
-              return []
+              Lwt.return []
           in
           lwt () = client_send stream Client_begin in
-          return (guid, caps)
+          Lwt.return (guid, caps)
       | Failure ->
           auth_failure "authentication failure"
     in
@@ -625,7 +625,7 @@ struct
     | Mech_reject
 
   class virtual mechanism_handler = object
-    method init = return (None : data option)
+    method init = Lwt.return (None : data option)
     method virtual data : data -> mechanism_return Lwt.t
     method abort = ()
   end
@@ -647,14 +647,14 @@ struct
     method data data =
       match user_id, try Some(int_of_string data) with _ -> None with
         | Some user_id, Some user_id' when user_id = user_id' ->
-            return (Mech_ok(Some user_id))
+            Lwt.return (Mech_ok(Some user_id))
         | _ ->
-            return Mech_reject
+            Lwt.return Mech_reject
   end
 
   class mech_anonymous_handler = object
     inherit mechanism_handler
-    method data _ = return (Mech_ok None)
+    method data _ = Lwt.return (Mech_ok None)
   end
 
   class mech_dbus_cookie_sha1_handler = object
@@ -678,30 +678,30 @@ struct
               lwt id, cookie = match keyring with
                 | { Cookie.id = id; Cookie.cookie = cookie } :: _ ->
                     (* There is still valid cookies, just choose one *)
-                    return (id, cookie)
+                    Lwt.return (id, cookie)
                 | [] ->
                     (* No one left, generate a new one *)
                     let id = Int32.abs (OBus_util.random_int32 ()) in
                     let cookie = hex_encode (OBus_util.random_string 24) in
                     lwt () = Keyring.save context [{ Cookie.id = id; Cookie.time = cur_time; Cookie.cookie = cookie }] in
-                    return (id, cookie)
+                    Lwt.return (id, cookie)
               in
               let rand = hex_encode (OBus_util.random_string 16) in
               let chal = sprintf "%s %ld %s" context id rand in
               lwt () = Lwt_log.debug_f ~section "server: dbus_cookie_sha1: chal: %s" chal in
               state <- `State2(cookie, rand);
-              return (Mech_continue chal)
+              Lwt.return (Mech_continue chal)
 
           | `State2(cookie, my_rand) ->
               Scanf.sscanf resp "%s %s"
                 (fun its_rand comp_sha1 ->
                    if OBus_util.sha_1 (sprintf "%s:%s:%s" my_rand its_rand cookie) = hex_decode comp_sha1 then
-                     return (Mech_ok user_id)
+                     Lwt.return (Mech_ok user_id)
                    else
-                     return Mech_reject)
+                     Lwt.return Mech_reject)
 
       with _ ->
-        return Mech_reject
+        Lwt.return Mech_reject
 
     method abort = ()
   end
@@ -738,12 +738,12 @@ struct
     | Failure
 
   let reject mechs =
-    return (Transition(Server_rejected (List.map mech_name mechs),
-                       Waiting_for_auth))
+    Lwt.return (Transition(Server_rejected (List.map mech_name mechs),
+                           Waiting_for_auth))
 
   let error msg =
-    return (Transition(Server_error msg,
-                       Waiting_for_auth))
+    Lwt.return (Transition(Server_error msg,
+                           Waiting_for_auth))
 
   let transition user_id guid capabilities mechs state cmd = match state with
     | Waiting_for_auth -> begin match cmd with
@@ -759,50 +759,50 @@ struct
                     lwt init = mech#init in
                     match init, resp with
                       | None, None ->
-                          return (Transition(Server_data "",
-                                             Waiting_for_data mech))
+                          Lwt.return (Transition(Server_data "",
+                                                 Waiting_for_data mech))
                       | Some chal, None ->
-                          return (Transition(Server_data chal,
-                                             Waiting_for_data mech))
+                          Lwt.return (Transition(Server_data chal,
+                                                 Waiting_for_data mech))
                       | Some chal, Some rest ->
                           reject mechs
                       | None, Some resp ->
                           mech#data resp >>= function
                             | Mech_continue chal ->
-                                return (Transition(Server_data chal,
-                                                   Waiting_for_data mech))
+                                Lwt.return (Transition(Server_data chal,
+                                                       Waiting_for_data mech))
                             | Mech_ok uid ->
-                                return (Transition(Server_ok guid,
-                                                   Waiting_for_begin(uid, [])))
+                                Lwt.return (Transition(Server_ok guid,
+                                                       Waiting_for_begin(uid, [])))
                             | Mech_reject ->
                                 reject mechs
                   with exn ->
                     reject mechs
             end
-        | Client_begin -> return Failure
+        | Client_begin -> Lwt.return Failure
         | Client_error msg -> reject mechs
         | _ -> error "AUTH command expected"
       end
 
     | Waiting_for_data mech -> begin match cmd with
         | Client_data "" ->
-            return (Transition(Server_data "",
-                               Waiting_for_data mech))
+            Lwt.return (Transition(Server_data "",
+                                   Waiting_for_data mech))
         | Client_data resp -> begin
             try_lwt
               mech#data resp >>= function
                 | Mech_continue chal ->
-                    return (Transition(Server_data chal,
-                                       Waiting_for_data mech))
+                    Lwt.return (Transition(Server_data chal,
+                                           Waiting_for_data mech))
                 | Mech_ok uid ->
-                    return (Transition(Server_ok guid,
-                                       Waiting_for_begin(uid, [])))
+                    Lwt.return (Transition(Server_ok guid,
+                                           Waiting_for_begin(uid, [])))
                 | Mech_reject ->
                     reject mechs
             with exn ->
               reject mechs
           end
-        | Client_begin -> mech#abort; return Failure
+        | Client_begin -> mech#abort; Lwt.return Failure
         | Client_cancel -> mech#abort; reject mechs
         | Client_error _ -> mech#abort; reject mechs
         | _ -> mech#abort; error "DATA command expected"
@@ -810,22 +810,22 @@ struct
 
     | Waiting_for_begin(uid, caps) -> begin match cmd with
         | Client_begin ->
-            return (Accept(uid, caps))
+            Lwt.return (Accept(uid, caps))
         | Client_cancel ->
             reject mechs
         | Client_error _ ->
             reject mechs
         | Client_negotiate_unix_fd ->
             if List.mem `Unix_fd capabilities then
-              return(Transition(Server_agree_unix_fd,
-                                Waiting_for_begin(uid,
-                                                  if List.mem `Unix_fd caps then
-                                                    caps
-                                                  else
-                                                    `Unix_fd :: caps)))
+              Lwt.return(Transition(Server_agree_unix_fd,
+                                    Waiting_for_begin(uid,
+                                                      if List.mem `Unix_fd caps then
+                                                        caps
+                                                      else
+                                                        `Unix_fd :: caps)))
             else
-              return(Transition(Server_error "Unix fd passing is not supported by this server",
-                                Waiting_for_begin(uid, caps)))
+              Lwt.return(Transition(Server_error "Unix fd passing is not supported by this server",
+                                    Waiting_for_begin(uid, caps)))
         | _ ->
             error "BEGIN command expected"
       end
@@ -848,7 +848,7 @@ struct
               lwt () = server_send stream cmd in
               loop state count
         | Accept(uid, caps) ->
-            return (uid, caps)
+            Lwt.return (uid, caps)
         | Failure ->
             auth_failure "authentication failure"
     in

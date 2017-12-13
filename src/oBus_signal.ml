@@ -10,7 +10,6 @@
 let section = Lwt_log.Section.make "obus(signal)"
 
 open Lwt_react
-open Lwt
 
 (* +-----------------------------------------------------------------+
    | Signal descriptors                                              |
@@ -191,18 +190,18 @@ let connect ?switch sd =
              ~member:sd.member
              ())
       else
-        return ()
+        Lwt.return ()
 
     (* Plus the resolver if needed: *)
     and owner_option =
       if OBus_connection.name connection <> "" && name <> "" then
         if OBus_name.is_unique name then
-          return (Some (S.const name))
+          Lwt.return (Some (S.const name))
         else
           lwt owner = OBus_resolver.make ~switch:resources_switch connection name in
-          return (Some owner)
+          Lwt.return (Some owner)
       else
-        return None
+        Lwt.return None
     in
 
     let info =
@@ -275,7 +274,7 @@ let connect ?switch sd =
            Lazy.force disconnect)
     in
 
-    return event
+    Lwt.return event
   with exn ->
     lwt () = Lwt_switch.turn_off resources_switch in
     raise_lwt exn
