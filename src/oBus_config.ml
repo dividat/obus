@@ -11,4 +11,4 @@
 let machine_uuid_file = "/var/lib/dbus/machine-id"
 
 (* Version of obus: *)
-let version = "$(pkg_version)"
+let version = "1.1.7"
