@@ -818,7 +818,7 @@ struct
     put_uint buffer 12 fields_length;
 
     (* Create the array of file descriptors *)
-    let fds = Array.create fd_count Unix.stdin in
+    let fds = Array.make fd_count Unix.stdin in
     FD_map.iter (fun fd index -> Array.unsafe_set fds index fd) ptr.fds;
 
     (Bytes.unsafe_to_string ptr.buf, fds)
@@ -1273,7 +1273,7 @@ let read_message_with_fds reader  =
         buffer
         (fun length f ->
            let length = length - 16 in
-           let buffer = String.create length in
+           let buffer = Bytes.create length in
            lwt () = Lwt_io.read_into_exactly ic buffer 0 length in
            let buffer = Bytes.unsafe_to_string buffer in
            f { buf = buffer; ofs = 0; max = length; fds = [||] } (Some(consumed_fds, reader.r_pending_fds)) return)

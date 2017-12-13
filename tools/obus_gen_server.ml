@@ -54,7 +54,7 @@ let make_convertors make_convertor names args =
     names args
 
 let print_impl oc name members symbols annotations =
-  let module_name = String.capitalize (Utils.file_name_of_interface_name name) in
+  let module_name = String.capitalize_ascii (Utils.file_name_of_interface_name name) in
   fprintf oc "\n\
               module %s =\n\
               struct\n\
@@ -176,10 +176,10 @@ let () =
   let prefix, intf_module =
     match !prefix with
       | Some str ->
-          (str, String.capitalize (Filename.basename str) ^ "_interfaces")
+          (str, String.capitalize_ascii (Filename.basename str) ^ "_interfaces")
       | None ->
           let name = try Filename.chop_extension source with Invalid_argument _ -> source in
-          (name ^ "_server", String.capitalize name ^ "_interfaces")
+          (name ^ "_server", String.capitalize_ascii name ^ "_interfaces")
   in
 
   let interfaces = Utils.parse_file source in

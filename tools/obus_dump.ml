@@ -31,7 +31,7 @@ let launch pp what_bus laddresses =
                    loop pp "sending message" what_bus transport bus]
          end)
   in
-  Unix.putenv (Printf.sprintf "DBUS_%s_BUS_ADDRESS" (String.uppercase what_bus)) (OBus_address.to_string (OBus_server.addresses server));
+  Unix.putenv (Printf.sprintf "DBUS_%s_BUS_ADDRESS" (String.uppercase_ascii what_bus)) (OBus_address.to_string (OBus_server.addresses server));
   return ()
 
 

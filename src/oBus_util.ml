@@ -95,7 +95,7 @@ let homedir = lazy(
     return pwd.Unix.pw_dir
 )
 
-let init_pseudo = Lazy.lazy_from_fun Random.self_init
+let init_pseudo = Lazy.from_fun Random.self_init
 
 let fill_pseudo buffer pos len =
   ignore (Lwt_log.warning ~section "using pseudo-random generator");

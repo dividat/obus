@@ -269,8 +269,8 @@ let split name =
   in
   split 0
 
-let ocaml_lid name = String.uncapitalize (String.concat "_" (List.map String.lowercase (split name)))
-let ocaml_uid name = String.capitalize (String.concat "_" (List.map String.lowercase (split name)))
+let ocaml_lid name = String.uncapitalize_ascii (String.concat "_" (List.map String.lowercase_ascii (split name)))
+let ocaml_uid name = String.capitalize_ascii (String.concat "_" (List.map String.lowercase_ascii (split name)))
 
-let haskell_lid name = String.uncapitalize (String.concat "" (split name))
-let haskell_uid name = String.capitalize (String.concat "" (split name))
+let haskell_lid name = String.uncapitalize_ascii (String.concat "" (split name))
+let haskell_uid name = String.capitalize_ascii (String.concat "" (split name))

@@ -247,7 +247,7 @@ let make_socket domain typ address =
   let fd = Lwt_unix.socket domain typ 0 in
   (try Lwt_unix.set_close_on_exec fd with _ -> ());
   try
-    Lwt_unix.Versioned.bind_1 fd address;
+    lwt () = Lwt_unix.bind fd address in
     Lwt_unix.listen fd 10;
     return fd
   with Unix_error(err, _, _) as exn ->
@@ -385,7 +385,7 @@ let shutdown server =
   end else
     server.srv_loops
 
-let default_address = OBus_address.make ~name:"unix" ~args:[("tmpdir", Filename.temp_dir_name)]
+let default_address = OBus_address.make ~name:"unix" ~args:[("tmpdir", Filename.get_temp_dir_name ())]
 
 let make_lowlevel ?switch ?(capabilities=OBus_auth.capabilities) ?mechanisms ?(addresses=[default_address]) ?(allow_anonymous=false) callback =
   Lwt_switch.check switch;
@@ -436,7 +436,7 @@ let make_lowlevel ?switch ?(capabilities=OBus_auth.capabilities) ?mechanisms ?(a
               lwt nonce, nonce_file =
                 if List.exists (fun addr -> OBus_address.name addr = "nonce-tcp") addresses then begin
                   let nonce = OBus_util.random_string 16 in
-                  let file_name = Filename.concat Filename.temp_dir_name ("obus-" ^ OBus_util.hex_encode (OBus_util.random_string 10)) in
+                  let file_name = Filename.concat (Filename.get_temp_dir_name ()) ("obus-" ^ OBus_util.hex_encode (OBus_util.random_string 10)) in
                   try_lwt
                     lwt () = Lwt_io.with_file ~mode:Lwt_io.output file_name (fun oc -> Lwt_io.write oc nonce) in
                     return (nonce, file_name)
