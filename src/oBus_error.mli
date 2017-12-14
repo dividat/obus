@@ -117,4 +117,4 @@ exception No_memory of message
   (** The [org.freedesktop.DBus.Error.NoMemory] error *)
 
 exception No_reply of message
-  (** "org.freedesktop.DBus.Error.NoReply" *)
+  (** The [org.freedesktop.DBus.Error.NoReply] error *)

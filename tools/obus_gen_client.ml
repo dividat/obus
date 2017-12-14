@@ -101,7 +101,7 @@ let print_impl oc name members symbols annotations =
              print_names oc i_names;
              output_char oc '\n'
            end else begin
-             output_string oc "    lwt ";
+             output_string oc "    let%lwt ";
              if need_context then output_string oc "(context, ";
              print_names oc o_names;
              if need_context then

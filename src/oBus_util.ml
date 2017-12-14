@@ -90,7 +90,7 @@ let homedir = lazy(
   try
     Lwt.return (Sys.getenv "HOME")
   with Not_found ->
-    lwt pwd = Lwt_unix.getpwuid (Unix.getuid ()) in
+    let%lwt pwd = Lwt_unix.getpwuid (Unix.getuid ()) in
     Lwt.return pwd.Unix.pw_dir
 )
 

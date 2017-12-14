@@ -8,7 +8,7 @@
  * This file is a part of obus, an ocaml implementation of D-Bus.
  *)
 
-Ocaml.packs := ["lwt.syntax"; "obus.syntax"; "obus"]
+Ocaml.packs := ["lwt.ppx"; "obus"]
 --
 
 (* Simple script which listen keyboard events emited by hal and run
@@ -22,16 +22,16 @@ let commands = [
   ("volume-down", "amixer -q set Master 5%-");
 ]
 
-lwt () =
-  lwt bus = Lazy.force OBus_bus.system in
+let () = Lwt_main.run begin
+  let%lwt bus = Lazy.force OBus_bus.system in
 
   (* Tell the message bus we want to receive ButtonPressed events from
      hal. *)
-  lwt () = OBus_bus.add_match bus (OBus_match.rule
-                                     ~sender:"org.freedesktop.Hal"
-                                     ~interface:"org.freedesktop.Hal.Device"
-                                     ~member:"Condition"
-                                     ~arguments:[(0, "ButtonPressed")] ()) in
+  let%lwt () = OBus_bus.add_match bus (OBus_match.rule
+                                         ~sender:"org.freedesktop.Hal"
+                                         ~interface:"org.freedesktop.Hal.Device"
+                                         ~member:"Condition"
+                                         ~arguments:[(0, "ButtonPressed")] ()) in
 
   (* Add a message filter. We use that instead of adding a signal
      receiver because we do not care about which object send the
@@ -54,3 +54,4 @@ lwt () =
   (* Wait forever, the program will exit when the connection is
      closed *)
   fst (wait ())
+end

@@ -16,19 +16,19 @@ let max_name_length = OBus_protocol.max_name_length
 let max_message_size = OBus_protocol.max_message_size
 
 let read_uuid_file file =
-  try_lwt
-    lwt line = Lwt_io.with_file ~mode:Lwt_io.input file Lwt_io.read_line in
+  try%lwt
+    let%lwt line = Lwt_io.with_file ~mode:Lwt_io.input file Lwt_io.read_line in
     Lwt.return (OBus_uuid.of_string line)
   with exn ->
     ignore (Lwt_log.error_f ~section ~exn "failed to read the local machine uuid from file %S" file);
-    raise_lwt exn
+    [%lwt raise exn]
 
 let machine_uuid = lazy(
-  try_lwt
+  try%lwt
     read_uuid_file OBus_config.machine_uuid_file
   with exn ->
-    try_lwt
+    try%lwt
       read_uuid_file "/etc/machine-id"
     with _ ->
-      raise_lwt exn
+      [%lwt raise exn]
 )

@@ -85,31 +85,31 @@ let register_connection connection =
         let info = { names; set_names; connection } in
         OBus_connection.set connection key (Some info);
         let _ = Lwt_sequence.add_l (update_names info) (OBus_connection.incoming_filters connection) in
-        lwt name = OBus_method.call m_Hello (proxy connection) () in
+        let%lwt name = OBus_method.call m_Hello (proxy connection) () in
         OBus_connection.set_name connection name;
         Lwt.return ()
     | Some _ ->
         Lwt.return ()
 
 let of_addresses ?switch addresses =
-  lwt bus = OBus_connection.of_addresses ?switch addresses ~shared:true in
-  lwt () = register_connection bus in
+  let%lwt bus = OBus_connection.of_addresses ?switch addresses ~shared:true in
+  let%lwt () = register_connection bus in
   Lwt.return bus
 
 let session_bus = lazy(
-  try_lwt
-    lwt bus = Lazy.force OBus_address.session >>= of_addresses in
+  try%lwt
+    let%lwt bus = Lazy.force OBus_address.session >>= of_addresses in
     OBus_connection.set_on_disconnect bus exit_on_disconnect;
     Lwt.return bus
   with exn ->
-    lwt () = Lwt_log.warning ~exn ~section "Failed to open a connection to the session bus" in
-    raise_lwt exn
+    let%lwt () = Lwt_log.warning ~exn ~section "Failed to open a connection to the session bus" in
+    [%lwt raise exn]
 )
 
 let session ?switch () =
   Lwt_switch.check switch;
-  lwt bus = Lazy.force session_bus in
-  lwt () = Lwt_switch.add_hook_or_exec switch (fun () -> OBus_connection.close bus) in
+  let%lwt bus = Lazy.force session_bus in
+  let%lwt () = Lwt_switch.add_hook_or_exec switch (fun () -> OBus_connection.close bus) in
   Lwt.return bus
 
 let system_bus_state = ref None
@@ -117,22 +117,22 @@ let system_bus_mutex = Lwt_mutex.create ()
 
 let system ?switch () =
   Lwt_switch.check switch;
-  lwt bus =
+  let%lwt bus =
     Lwt_mutex.with_lock system_bus_mutex
       (fun () ->
          match !system_bus_state with
            | Some bus when S.value (OBus_connection.active bus) ->
                Lwt.return bus
            | _ ->
-               try_lwt
-                 lwt bus = Lazy.force OBus_address.system >>= of_addresses in
+               try%lwt
+                 let%lwt bus = Lazy.force OBus_address.system >>= of_addresses in
                  system_bus_state := Some bus;
                  Lwt.return bus
                with exn ->
-                 lwt () = Lwt_log.warning ~exn ~section "Failed to open a connection to the system bus" in
-                 raise_lwt exn)
+                 let%lwt () = Lwt_log.warning ~exn ~section "Failed to open a connection to the system bus" in
+                 [%lwt raise exn])
   in
-  lwt () = Lwt_switch.add_hook_or_exec switch (fun () -> OBus_connection.close bus) in
+  let%lwt () = Lwt_switch.add_hook_or_exec switch (fun () -> OBus_connection.close bus) in
   Lwt.return bus
 
 (* +-----------------------------------------------------------------+
@@ -234,14 +234,14 @@ let name_acquired bus =
   OBus_signal.make s_NameAcquired (proxy bus)
 
 let get_peer bus name =
-  try_lwt
-    lwt unique_name = get_name_owner bus name in
+  try%lwt
+    let%lwt unique_name = get_name_owner bus name in
     Lwt.return (OBus_peer.make bus unique_name)
   with Name_has_no_owner msg ->
-    lwt _ = start_service_by_name bus name in
-    lwt unique_name = get_name_owner bus name in
+    let%lwt _ = start_service_by_name bus name in
+    let%lwt unique_name = get_name_owner bus name in
     Lwt.return (OBus_peer.make bus unique_name)
 
 let get_proxy bus name path =
-  lwt peer = get_peer bus name in
+  let%lwt peer = get_peer bus name in
   Lwt.return (OBus_proxy.make peer path)

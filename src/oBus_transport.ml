@@ -11,8 +11,8 @@ let section = Lwt_log.Section.make "obus(transport)"
 
 open Unix
 open Printf
-open Lwt.Infix
 open OBus_address
+open Lwt.Infix
 
 (* +-----------------------------------------------------------------+
    | Types and constructors                                          |
@@ -53,7 +53,7 @@ let socket ?switch ?(capabilities=[]) fd =
         send = (fun msg -> OBus_wire.write_message_with_fds writer msg);
         capabilities = capabilities;
         shutdown = (fun _ ->
-                      lwt () = OBus_wire.close_reader reader <&> OBus_wire.close_writer writer in
+                      let%lwt () = OBus_wire.close_reader reader <&> OBus_wire.close_writer writer in
                       Lwt_unix.shutdown fd SHUTDOWN_ALL;
                       Lwt_unix.close fd) }
     else
@@ -63,7 +63,7 @@ let socket ?switch ?(capabilities=[]) fd =
         send = (fun msg -> OBus_wire.write_message oc msg);
         capabilities = capabilities;
         shutdown = (fun _ ->
-                      lwt () = Lwt_io.close ic <&> Lwt_io.close oc in
+                      let%lwt () = Lwt_io.close ic <&> Lwt_io.close oc in
                       Lwt_unix.shutdown fd SHUTDOWN_ALL;
                       Lwt_unix.close fd) }
   in
@@ -88,17 +88,17 @@ let loopback () =
 let make_socket domain typ addr =
   let fd = Lwt_unix.socket domain typ 0 in
   (try Lwt_unix.set_close_on_exec fd with _ -> ());
-  try_lwt
-    lwt () = Lwt_unix.connect fd addr in
+  try%lwt
+    let%lwt () = Lwt_unix.connect fd addr in
     Lwt.return (fd, domain)
   with exn ->
-    lwt () = Lwt_unix.close fd in
-    raise_lwt exn
+    let%lwt () = Lwt_unix.close fd in
+    [%lwt raise exn]
 
 let rec write_nonce fd nonce pos len =
   Lwt_unix.write_string fd nonce 0 16 >>= function
     | 0 ->
-        raise_lwt (Failure "OBus_transport.connect: failed to send the nonce to the server")
+        [%lwt raise (Failure "OBus_transport.connect: failed to send the nonce to the server")]
     | n ->
         if n = len then
           Lwt.return ()
@@ -108,22 +108,22 @@ let rec write_nonce fd nonce pos len =
 let make_socket_nonce nonce_file domain typ addr =
   match nonce_file with
     | None ->
-        raise_lwt (Invalid_argument "OBus_transport.connect: missing 'noncefile' parameter")
+        [%lwt raise (Invalid_argument "OBus_transport.connect: missing 'noncefile' parameter")]
     | Some file_name ->
-        lwt nonce =
-          try_lwt
+        let%lwt nonce =
+          try%lwt
             Lwt_io.with_file ~mode:Lwt_io.input file_name (Lwt_io.read ~count:16)
           with
             | Unix.Unix_error(err, _, _) ->
-                raise_lwt (Failure(Printf.sprintf "failed to read the nonce file '%s': %s" file_name (Unix.error_message err)))
+                [%lwt raise (Failure(Printf.sprintf "failed to read the nonce file '%s': %s" file_name (Unix.error_message err)))]
             | End_of_file ->
-                raise_lwt (Failure(Printf.sprintf "OBus_transport.connect: '%s' is an invalid nonce-file" file_name))
+                [%lwt raise (Failure(Printf.sprintf "OBus_transport.connect: '%s' is an invalid nonce-file" file_name))]
         in
         if String.length nonce <> 16 then
-          raise_lwt (Failure(Printf.sprintf "OBus_transport.connect: '%s' is an invalid nonce-file" file_name))
+          [%lwt raise (Failure(Printf.sprintf "OBus_transport.connect: '%s' is an invalid nonce-file" file_name))]
         else begin
-          lwt fd, domain = make_socket domain typ addr in
-          lwt () = write_nonce fd nonce 0 16 in
+          let%lwt fd, domain = make_socket domain typ addr in
+          let%lwt () = write_nonce fd nonce 0 16 in
           Lwt.return (fd, domain)
         end
 
@@ -138,9 +138,9 @@ let rec connect address =
           | None, Some abst, None ->
               make_socket PF_UNIX SOCK_STREAM (ADDR_UNIX("\x00" ^ abst))
           | None, None, Some tmpd ->
-              raise_lwt (Invalid_argument "OBus_transport.connect: unix tmpdir can only be used as a listening address")
+              [%lwt raise (Invalid_argument "OBus_transport.connect: unix tmpdir can only be used as a listening address")]
           | _ ->
-              raise_lwt (Invalid_argument "OBus_transport.connect: invalid unix address, must supply exactly one of 'path', 'abstract', 'tmpdir'")
+              [%lwt raise (Invalid_argument "OBus_transport.connect: invalid unix address, must supply exactly one of 'path', 'abstract', 'tmpdir'")]
       end
     | ("tcp" | "nonce-tcp") as name -> begin
         let host = match OBus_address.arg "host" address with
@@ -174,7 +174,7 @@ let rec connect address =
                 else
                   make_socket
               in
-              try_lwt
+              try%lwt
                 make_socket ai.ai_family ai.ai_socktype ai.ai_addr
               with exn ->
                 (* If the first connection failed, try with all the
@@ -183,9 +183,9 @@ let rec connect address =
                   | [] ->
                       (* If all connection failed, raise the error for
                          the first address: *)
-                      raise_lwt exn
+                      [%lwt raise exn]
                   | ai :: ais ->
-                      try_lwt
+                      try%lwt
                         make_socket ai.ai_family ai.ai_socktype ai.ai_addr
                       with exn ->
                         find ais
@@ -195,47 +195,47 @@ let rec connect address =
     | "launchd" -> begin
         match OBus_address.arg "env" address with
           | Some env ->
-              lwt path =
-                try_lwt
+              let%lwt path =
+                try%lwt
                   Lwt_process.pread_line ("launchctl", [|"launchctl"; "getenv"; env|])
                 with exn ->
-                  lwt () = Lwt_log.error_f ~exn ~section "launchctl failed" in
-                  raise_lwt exn
+                  let%lwt () = Lwt_log.error_f ~exn ~section "launchctl failed" in
+                  [%lwt raise exn]
               in
               make_socket PF_UNIX SOCK_STREAM (ADDR_UNIX path)
           | None ->
-              raise_lwt (Invalid_argument "OBus_transport.connect: missing 'env' in launchd address")
+              [%lwt raise (Invalid_argument "OBus_transport.connect: missing 'env' in launchd address")]
       end
     | "autolaunch" -> begin
-        lwt addresses =
-          lwt uuid = Lazy.force OBus_info.machine_uuid in
-          lwt line =
-            try_lwt
+        let%lwt addresses =
+          let%lwt uuid = Lazy.force OBus_info.machine_uuid in
+          let%lwt line =
+            try%lwt
               Lwt_process.pread_line ("dbus-launch", [|"dbus-launch"; "--autolaunch"; OBus_uuid.to_string uuid; "--binary-syntax"|])
             with exn ->
-              lwt () = Lwt_log.error_f ~exn ~section "autolaunch failed" in
-              raise_lwt exn
+              let%lwt () = Lwt_log.error_f ~exn ~section "autolaunch failed" in
+              [%lwt raise exn]
           in
           let line = try String.sub line 0 (String.index line '\000') with _ -> line in
-          try_lwt
+          try%lwt
             Lwt.return (OBus_address.of_string line)
           with OBus_address.Parse_failure(addr, pos, reason) as exn ->
-            lwt () = Lwt_log.error_f ~section "autolaunch returned an invalid address %S, at position %d: %s" addr pos reason in
-            raise_lwt exn
+            let%lwt () = Lwt_log.error_f ~section "autolaunch returned an invalid address %S, at position %d: %s" addr pos reason in
+            [%lwt raise exn]
         in
         match addresses with
           | [] ->
-              lwt () = Lwt_log.error_f ~section "'autolaunch' returned no addresses" in
-              raise_lwt (Failure "'autolaunch' returned no addresses")
+              let%lwt () = Lwt_log.error_f ~section "'autolaunch' returned no addresses" in
+              [%lwt raise (Failure "'autolaunch' returned no addresses")]
           | address :: rest ->
-              try_lwt
+              try%lwt
                 connect address
               with exn ->
                 let rec find = function
                   | [] ->
-                      raise_lwt exn
+                      [%lwt raise exn]
                   | address :: rest ->
-                      try_lwt
+                      try%lwt
                         connect address
                       with exn ->
                         find rest
@@ -244,26 +244,26 @@ let rec connect address =
       end
 
     | name ->
-        raise_lwt (Failure ("unknown transport type: " ^ name))
+        [%lwt raise (Failure ("unknown transport type: " ^ name))]
 
 let of_addresses ?switch ?(capabilities=OBus_auth.capabilities) ?mechanisms addresses =
   Lwt_switch.check switch;
   match addresses with
     | [] ->
-        raise_lwt (Invalid_argument "OBus_transport.of_addresses: no address given")
+        [%lwt raise (Invalid_argument "OBus_transport.of_addresses: no address given")]
     | addr :: rest ->
         (* Search an address for which connection succeed: *)
-        lwt fd, domain =
-          try_lwt
+        let%lwt fd, domain =
+          try%lwt
             connect addr
           with exn ->
             (* If the first try fails, try with the others: *)
             let rec find = function
               | [] ->
                   (* If they all fail, raise the first exception: *)
-                  raise_lwt exn
+                  [%lwt raise exn]
               | addr :: rest ->
-                  try_lwt
+                  try%lwt
                     connect addr
                   with exn ->
                     find rest
@@ -271,12 +271,12 @@ let of_addresses ?switch ?(capabilities=OBus_auth.capabilities) ?mechanisms addr
             find rest
         in
         (* Do authentication only once: *)
-        try_lwt
+        try%lwt
           Lwt_unix.write_string fd "\x00" 0 1 >>= function
             | 0 ->
-                raise_lwt (OBus_auth.Auth_failure "failed to send the initial null byte")
+                [%lwt raise (OBus_auth.Auth_failure "failed to send the initial null byte")]
             | 1 ->
-                lwt guid, capabilities =
+                let%lwt guid, capabilities =
                   OBus_auth.Client.authenticate
                     ~capabilities:(List.filter (function `Unix_fd -> domain = PF_UNIX) capabilities)
                     ?mechanisms
@@ -288,5 +288,5 @@ let of_addresses ?switch ?(capabilities=OBus_auth.capabilities) ?mechanisms addr
                 assert false
         with exn ->
           Lwt_unix.shutdown fd SHUTDOWN_ALL;
-          lwt () = Lwt_unix.close fd in
-          raise_lwt exn
+          let%lwt () = Lwt_unix.close fd in
+          [%lwt raise exn]

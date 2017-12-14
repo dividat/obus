@@ -189,7 +189,7 @@ let cleanup active ~is_crash =
   Serial_map.iter (fun _ wakener -> Lwt.wakeup_exn wakener Connection_closed) active.reply_waiters;
 
   (* If the connection is closed normally, flush it *)
-  lwt () =
+  let%lwt () =
     if not is_crash then
       Lwt_mutex.with_lock active.outgoing_mutex Lwt.return
     else begin
@@ -199,7 +199,7 @@ let cleanup active ~is_crash =
   in
 
   (* Shutdown the transport *)
-  try_lwt
+  try%lwt
     OBus_transport.shutdown active.transport
   with exn ->
     Lwt_log.error ~section ~exn "failed to abort/shutdown the transport"
@@ -218,8 +218,8 @@ let kill connection exn =
         Lwt.return ()
     | Active active ->
         connection#set_state Killed;
-        lwt () = cleanup active ~is_crash:true in
-        try_lwt
+        let%lwt () = cleanup active ~is_crash:true in
+        try%lwt
           active.on_disconnect exn
         with exn ->
           Lwt_log.error ~section ~exn "the error handler failed with"
@@ -247,8 +247,8 @@ let send_message_backend connection gen_serial reply_waiter_opt message =
          let message = if gen_serial then { message with OBus_message.serial = active.next_serial } else message in
          match apply_filters "outgoing" message active.outgoing_filters with
            | None ->
-               lwt () = Lwt_log.debug ~section "outgoing message dropped by filters" in
-               raise_lwt (Failure "message dropped by filters")
+               let%lwt () = Lwt_log.debug ~section "outgoing message dropped by filters" in
+               [%lwt raise (Failure "message dropped by filters")]
 
            | Some message ->
                if not closed then begin
@@ -265,10 +265,10 @@ let send_message_backend connection gen_serial reply_waiter_opt message =
                        ()
                end;
 
-               try_lwt
-                 lwt () = Lwt.choose [active.abort_send_waiter;
-                                      (* Do not cancel a thread while it is marshaling message: *)
-                                      Lwt.protected (OBus_transport.send active.transport message)] in
+               try%lwt
+                 let%lwt () = Lwt.choose [active.abort_send_waiter;
+                                          (* Do not cancel a thread while it is marshaling message: *)
+                                          Lwt.protected (OBus_transport.send active.transport message)] in
                  (* Everything went OK, continue with a new serial *)
                  if gen_serial then active.next_serial <- Int32.succ active.next_serial;
                  Lwt.return ()
@@ -276,24 +276,24 @@ let send_message_backend connection gen_serial reply_waiter_opt message =
                  | OBus_wire.Data_error _ as exn ->
                      (* The message can not be marshaled for some
                         reason. This is not a fatal error. *)
-                     raise_lwt exn
+                     [%lwt raise exn]
 
                  | Lwt.Canceled ->
                      (* Message sending have been canceled by the
                         user. This is not a fatal error either. *)
-                     raise_lwt Lwt.Canceled
+                     [%lwt raise Lwt.Canceled]
 
                  | exn ->
                      (* All other errors are considered as fatal. They
                         are fatal because it is possible that a
                         message has been partially sent on the
                         connection, so the message stream is broken *)
-                     lwt () = kill connection exn in
-                     raise_lwt exn
+                     let%lwt () = kill connection exn in
+                     [%lwt raise exn]
        end else
          match connection#state with
            | Killed | Closed ->
-               raise_lwt Connection_closed
+               [%lwt raise Connection_closed]
            | Active _ ->
                Lwt.return ())
 
@@ -302,7 +302,7 @@ let send_message connection message =
 
 let send_message_with_reply connection message =
   let (waiter, wakener) as v = Lwt.task () in
-  lwt () = send_message_backend connection true (Some v) message in
+  let%lwt () = send_message_backend connection true (Some v) message in
   waiter
 
 let send_message_keep_serial connection message =
@@ -310,7 +310,7 @@ let send_message_keep_serial connection message =
 
 let send_message_keep_serial_with_reply connection message =
   let (waiter, wakener) as v = Lwt.task () in
-  lwt () = send_message_backend connection false (Some v) message in
+  let%lwt () = send_message_backend connection false (Some v) message in
   waiter
 
 (* +-----------------------------------------------------------------+
@@ -326,19 +326,19 @@ let method_call_with_message ~connection ?destination ~path ?interface ~member ~
       ~member
       (OBus_value.C.make_sequence i_args args)
   in
-  lwt o_msg = send_message_with_reply connection i_msg in
+  let%lwt o_msg = send_message_with_reply connection i_msg in
   match o_msg with
     | { OBus_message.typ = OBus_message.Method_return _; body } -> begin
         try
           Lwt.return (o_msg, OBus_value.C.cast_sequence o_args body)
         with OBus_value.C.Signature_mismatch ->
-          raise_lwt (OBus_message.invalid_reply i_msg (OBus_value.C.type_sequence o_args) o_msg)
+          [%lwt raise (OBus_message.invalid_reply i_msg (OBus_value.C.type_sequence o_args) o_msg)]
       end
     | { OBus_message.typ = OBus_message.Error(_, error_name);
         OBus_message.body = OBus_value.V.Basic(OBus_value.V.String message) :: _  } ->
-        raise_lwt (OBus_error.make error_name message)
+        [%lwt raise (OBus_error.make error_name message)]
     | { OBus_message.typ = OBus_message.Error(_, error_name) } ->
-        raise_lwt (OBus_error.make error_name "")
+        [%lwt raise (OBus_error.make error_name "")]
     | _ ->
         assert false
 
@@ -389,32 +389,32 @@ let dispatch_message active message =
 
     (* Handling of the special "org.freedesktop.DBus.Peer" interface *)
     | { typ = Method_call(_, "org.freedesktop.DBus.Peer", member); body; sender; serial } -> begin
-        try_lwt
-          lwt body =
+        try%lwt
+          let%lwt body =
             match member, body with
               | "Ping", [] ->
                   Lwt.return []
               | "GetMachineId", [] -> begin
-                  try_lwt
-                    lwt uuid = Lazy.force OBus_info.machine_uuid in
+                  try%lwt
+                    let%lwt uuid = Lazy.force OBus_info.machine_uuid in
                     Lwt.return [OBus_value.V.basic_string (OBus_uuid.to_string uuid)]
                   with exn ->
                     if OBus_error.name exn = OBus_error.ocaml then
-                      raise_lwt
+                      [%lwt raise
                         (OBus_error.Failed
                            (Printf.sprintf
                               "Cannot read the machine uuid file (%s)"
-                              OBus_config.machine_uuid_file))
+                              OBus_config.machine_uuid_file))]
                     else
-                      raise_lwt exn
+                      [%lwt raise exn]
                 end
               | _ ->
-                  raise_lwt
+                  [%lwt raise
                     (OBus_error.Unknown_method
                        (Printf.sprintf
                           "Method %S with signature %S on interface \"org.freedesktop.DBus.Peer\" does not exist"
                           member
-                          (OBus_value.string_of_signature (OBus_value.V.type_of_sequence body))))
+                          (OBus_value.string_of_signature (OBus_value.V.type_of_sequence body))))]
           in
           send_message active.wrapper {
             flags = { no_reply_expected = true; no_auto_start = true };
@@ -441,7 +441,7 @@ let dispatch_message active message =
         Lwt.return ()
 
 let rec dispatch_forever active =
-  lwt () =
+  let%lwt () =
     (* Wait for the connection to become up *)
     match S.value active.down with
       | Some(waiter, wakener) ->
@@ -449,27 +449,27 @@ let rec dispatch_forever active =
       | None ->
           Lwt.return ()
   in
-  lwt message =
-    try_lwt
+  let%lwt message =
+    try%lwt
       Lwt.choose [OBus_transport.recv active.transport; active.abort_recv_waiter]
     with exn ->
-      lwt () = kill active.wrapper (Transport_error exn) in
-      raise_lwt exn
+      let%lwt () = kill active.wrapper (Transport_error exn) in
+      [%lwt raise exn]
   in
   match apply_filters "incoming" message active.incoming_filters with
     | None ->
-        lwt () = Lwt_log.debug ~section "incoming message dropped by filters" in
+        let%lwt () = Lwt_log.debug ~section "incoming message dropped by filters" in
         dispatch_forever active
     | Some message ->
         (* The internal dispatcher accepts only messages destined to
            the current connection: *)
         if active.name = "" || OBus_message.destination message = active.name then ignore (
-          try_lwt
+          (try%lwt
             dispatch_message active message
           with exn ->
-            Lwt_log.error ~section ~exn "message dispatching failed with"
-          finally
-            OBus_value.V.sequence_close (OBus_message.body message)
+            Lwt_log.error ~section ~exn "message dispatching failed with")
+          [%lwt.finally
+            OBus_value.V.sequence_close (OBus_message.body message)]
         );
         dispatch_forever active
 
@@ -555,7 +555,7 @@ let of_addresses ?switch ?(shared=true) addresses =
   Lwt_switch.check switch;
   match shared with
     | false ->
-        lwt guid, transport = OBus_transport.of_addresses ~capabilities addresses in
+        let%lwt guid, transport = OBus_transport.of_addresses ~capabilities addresses in
         Lwt.return (of_transport ?switch transport)
     | true ->
         (* Try to find a guid that we already have *)
@@ -569,7 +569,7 @@ let of_addresses ?switch ?(shared=true) addresses =
                  there is no other connection to a server with the same
                  guid, because during the authentication another
                  thread can add a new connection. *)
-              lwt guid, transport = OBus_transport.of_addresses ~capabilities addresses in
+              let%lwt guid, transport = OBus_transport.of_addresses ~capabilities addresses in
               Lwt.return (of_transport ?switch ~guid transport)
 
 let loopback () = of_transport (OBus_transport.loopback ())

@@ -21,7 +21,7 @@ let call info proxy args =
     args
 
 let call_with_context info proxy args =
-  lwt msg, result =
+  let%lwt msg, result =
     OBus_connection.method_call_with_message
       ~connection:(OBus_proxy.connection proxy)
       ~destination:(OBus_proxy.name proxy)

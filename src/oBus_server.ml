@@ -76,7 +76,7 @@ let read_nonce fd =
   let rec loop ofs len =
     Lwt_unix.read fd nonce ofs len >>= function
       | 0 ->
-          raise_lwt End_of_file
+          [%lwt raise End_of_file]
       | n ->
           if n = len then
             Lwt.return (Bytes.unsafe_to_string nonce)
@@ -88,11 +88,11 @@ let read_nonce fd =
 (* Wait for a client to connects *)
 let rec accept server listener =
   begin
-    try_lwt
-      lwt result = Lwt_unix.accept listener.lst_fd in
+    try%lwt
+      let%lwt result = Lwt_unix.accept listener.lst_fd in
       Lwt.return (`Accept result)
     with Unix_error(err, _, _) ->
-      lwt () =
+      let%lwt () =
         if server.srv_up then
           Lwt_log.error_f ~section "uncaught error: %s" (error_message err)
         else
@@ -104,25 +104,25 @@ let rec accept server listener =
     | `Accept(fd, address) ->
         if OBus_address.name listener.lst_address = "nonce-tcp" then begin
           begin
-            try_lwt
-              lwt nonce = read_nonce fd in
+            try%lwt
+              let%lwt nonce = read_nonce fd in
               if nonce <> server.srv_nonce then begin
-                lwt () = Lwt_log.notice_f ~section "client rejected because of invalid nonce" in
+                let%lwt () = Lwt_log.notice_f ~section "client rejected because of invalid nonce" in
                 Lwt.return `Drop
               end else
                 Lwt.return `OK
             with
               | End_of_file ->
-                  lwt () = Lwt_log.warning ~section "cannot read nonce from socket" in
+                  let%lwt () = Lwt_log.warning ~section "cannot read nonce from socket" in
                   Lwt.return `Drop
               | Unix.Unix_error(err, _, _) ->
-                  lwt () = Lwt_log.warning_f ~section "cannot read nonce from socket: %s" (Unix.error_message err) in
+                  let%lwt () = Lwt_log.warning_f ~section "cannot read nonce from socket: %s" (Unix.error_message err) in
                   Lwt.return `Drop
           end >>= function
             | `OK ->
                 Lwt.return (Event_connection(fd, address))
             | `Drop ->
-                lwt () =
+                let%lwt () =
                   try
                     Lwt_unix.shutdown fd SHUTDOWN_ALL;
                     Lwt_unix.close fd
@@ -170,17 +170,17 @@ let string_of_address = function
 (* Handle new clients. This function never fails. *)
 let handle_client server listener fd address =
   let shutdown = lazy(
-    try_lwt
+    try%lwt
       Lwt_unix.shutdown fd SHUTDOWN_ALL;
       Lwt_unix.close fd
     with Unix.Unix_error(err, _, _) ->
       Lwt_log.error_f ~section "cannot shutdown socket: %s" (Unix.error_message err)
   ) in
-  try_lwt
+  try%lwt
     let buf = Bytes.create 1 in
     Lwt_unix.read fd buf 0 1 >>= function
       | 0 ->
-          raise_lwt (OBus_auth.Auth_failure "did not receive the initial null byte")
+          [%lwt raise (OBus_auth.Auth_failure "did not receive the initial null byte")]
       | 1 ->
           let user_id =
             try
@@ -189,7 +189,7 @@ let handle_client server listener fd address =
               ignore (Lwt_log.info_f ~section "cannot read credential: %s" (Unix.error_message error));
               None
           in
-          lwt user_id, capabilities =
+          let%lwt user_id, capabilities =
             OBus_auth.Server.authenticate
               ~capabilities:listener.lst_capabilities
               ?mechanisms:server.srv_mechanisms
@@ -199,20 +199,20 @@ let handle_client server listener fd address =
               ()
           in
           if user_id = None && not server.srv_allow_anonymous then begin
-            lwt () = Lwt_log.notice_f ~section "client from %s rejected because anonymous connections are not allowed" (string_of_address address) in
+            let%lwt () = Lwt_log.notice_f ~section "client from %s rejected because anonymous connections are not allowed" (string_of_address address) in
             Lazy.force shutdown
           end else begin
             try
               server.srv_callback server (OBus_transport.socket ~capabilities fd);
               Lwt.return ()
             with exn ->
-              lwt () = Lwt_log.error ~section ~exn "server callback failed failed with" in
+              let%lwt () = Lwt_log.error ~section ~exn "server callback failed failed with" in
               Lazy.force shutdown
           end
       | _ ->
           assert false
   with exn ->
-    lwt () =
+    let%lwt () =
       match exn with
         | OBus_auth.Auth_failure msg ->
             Lwt_log.notice_f ~section "authentication failure for client from %s: %s" (string_of_address address) msg
@@ -225,7 +225,7 @@ let handle_client server listener fd address =
 let rec lst_loop server listener =
   Lwt.pick [server.srv_abort_waiter; accept server listener] >>= function
     | Event_shutdown ->
-        lwt () =
+        let%lwt () =
           try
             Lwt_unix.close listener.lst_fd
           with Unix_error(err, _, _) ->
@@ -247,13 +247,13 @@ let make_socket domain typ address =
   let fd = Lwt_unix.socket domain typ 0 in
   (try Lwt_unix.set_close_on_exec fd with _ -> ());
   try
-    lwt () = Lwt_unix.bind fd address in
+    let%lwt () = Lwt_unix.bind fd address in
     Lwt_unix.listen fd 10;
     Lwt.return fd
   with Unix_error(err, _, _) as exn ->
-    lwt () = Lwt_log.error_f ~section "failed to create listenning socket with %s: %s" (string_of_address address) (Unix.error_message err) in
-    lwt () = Lwt_unix.close fd in
-    raise_lwt exn
+    let%lwt () = Lwt_log.error_f ~section "failed to create listenning socket with %s: %s" (string_of_address address) (Unix.error_message err) in
+    let%lwt () = Lwt_unix.close fd in
+    [%lwt raise exn]
 
 let make_path path =
   make_socket PF_UNIX SOCK_STREAM (ADDR_UNIX(path))
@@ -269,24 +269,24 @@ let fd_addr_list_of_address address = match OBus_address.name address with
              OBus_address.arg "abstract" address,
              OBus_address.arg "tmpdir" address) with
         | Some path, None, None ->
-            lwt fd = make_path path in
+            let%lwt fd = make_path path in
             Lwt.return [(fd, address)]
         | None, Some abst, None ->
-            lwt fd = make_abstract abst in
+            let%lwt fd = make_abstract abst in
             Lwt.return [(fd, address)]
         | None, None, Some tmpd -> begin
             let path = Filename.concat tmpd ("obus-" ^ OBus_util.hex_encode (OBus_util.random_string 10)) in
             (* Try with abstract name first *)
-            try_lwt
-              lwt fd = make_abstract path in
+            try%lwt
+              let%lwt fd = make_abstract path in
               Lwt.return [(fd, OBus_address.make ~name:"unix" ~args:[("abstract", path)])]
             with exn ->
               (* And fallback to path in the filesystem *)
-              lwt fd = make_path path in
+              let%lwt fd = make_path path in
               Lwt.return [(fd, OBus_address.make ~name:"unix" ~args:[("path", path)])]
           end
         | _ ->
-            raise_lwt (Invalid_argument "OBus_transport.connect: invalid unix address, must supply exactly one of 'path', 'abstract', 'tmpdir'")
+            [%lwt raise (Invalid_argument "OBus_transport.connect: invalid unix address, must supply exactly one of 'path', 'abstract', 'tmpdir'")]
     end
 
   | ("tcp" | "nonce-tcp") as name -> begin
@@ -320,21 +320,21 @@ let fd_addr_list_of_address address = match OBus_address.name address with
                  | None -> ""
                  | Some f -> " family=" ^ f)
         | ais ->
-            lwt results = Lwt_list.map_p
+            let%lwt results = Lwt_list.map_p
               (fun ai ->
-                 try_lwt
-                   lwt fd = make_socket ai.ai_family ai.ai_socktype ai.ai_addr in
+                 try%lwt
+                   let%lwt fd = make_socket ai.ai_family ai.ai_socktype ai.ai_addr in
                    match getsockname (Lwt_unix.unix_file_descr fd) with
                      | ADDR_UNIX path ->
                          assert false
                      | ADDR_INET(host, port) ->
                          Lwt.return (`Success(fd, OBus_address.make ~name ~args:[("host", string_of_inet_addr host);
-                                                                                 ("port", string_of_int port);
-                                                                                 ("family",
-                                                                                  match ai.ai_family with
-                                                                                    | PF_UNIX -> assert false
-                                                                                    | PF_INET -> "ipv4"
-                                                                                    | PF_INET6 -> "ipv6")]))
+                                                                             ("port", string_of_int port);
+                                                                             ("family",
+                                                                              match ai.ai_family with
+                                                                                | PF_UNIX -> assert false
+                                                                                | PF_INET -> "ipv4"
+                                                                                | PF_INET6 -> "ipv6")]))
                  with exn ->
                    Lwt.return (`Failure exn))
               ais
@@ -349,17 +349,17 @@ let fd_addr_list_of_address address = match OBus_address.name address with
             if fd_addr_list = [] then
               (* If no fds have been created, raises the first failure: *)
               match OBus_util.find_map (function `Failure e -> Some e | `Success _ -> None) results with
-                | Some exn -> raise_lwt exn
+                | Some exn -> [%lwt raise exn]
                 | None -> assert false
             else
               Lwt.return fd_addr_list
     end
 
   | "autolaunch" ->
-      raise_lwt (Failure "OBus_server.make_server: autolaunch can not be used as a listenning address")
+      [%lwt raise (Failure "OBus_server.make_server: autolaunch can not be used as a listenning address")]
 
   | name ->
-      raise_lwt (Failure ("OBus_server.make_server: unknown transport type: " ^ name))
+      [%lwt raise (Failure ("OBus_server.make_server: unknown transport type: " ^ name))]
 
 (* +-----------------------------------------------------------------+
    | Servers                                                         |
@@ -371,7 +371,7 @@ let shutdown server =
   if server.srv_up then begin
     server.srv_up <- false;
     Lwt.wakeup server.srv_abort_wakener Event_shutdown;
-    lwt () =
+    let%lwt () =
       if server.srv_nonce_file <> "" then begin
         try
           Lwt_unix.unlink server.srv_nonce_file
@@ -391,16 +391,16 @@ let make_lowlevel ?switch ?(capabilities=OBus_auth.capabilities) ?mechanisms ?(a
   Lwt_switch.check switch;
   match addresses with
     | [] ->
-        raise_lwt (Invalid_argument "OBus_server.make: no addresses given")
+        [%lwt raise (Invalid_argument "OBus_server.make: no addresses given")]
 
     | addresses ->
         (* Construct the list of all listening fds for each
            address: *)
-        lwt result_by_address =
+        let%lwt result_by_address =
           Lwt_list.map_p
             (fun address ->
-               try_lwt
-                 lwt x = fd_addr_list_of_address address in
+               try%lwt
+                 let%lwt x = fd_addr_list_of_address address in
                  Lwt.return (`Success x)
                with e ->
                  Lwt.return (`Failure e))
@@ -409,14 +409,14 @@ let make_lowlevel ?switch ?(capabilities=OBus_auth.capabilities) ?mechanisms ?(a
 
         (* Close all listening file descriptors and fail: *)
         let abort exn =
-          lwt () =
+          let%lwt () =
             Lwt_list.iter_p
               (function
                  | `Success fd_addr_list ->
                      Lwt_list.iter_p
                        (fun (fd, address) ->
-                          try_lwt
-                            lwt () = Lwt_unix.close fd in
+                          try%lwt
+                            let%lwt () = Lwt_unix.close fd in
                             cleanup address
                           with Unix_error(err, _, _) ->
                             Lwt_log.error_f ~section "failed to close listenning file descriptor: %s" (Unix.error_message err))
@@ -425,7 +425,7 @@ let make_lowlevel ?switch ?(capabilities=OBus_auth.capabilities) ?mechanisms ?(a
                      Lwt.return ())
               result_by_address
           in
-          raise_lwt exn
+          [%lwt raise exn]
         in
 
         match OBus_util.find_map (function `Success _ -> None | `Failure e -> Some e) result_by_address with
@@ -433,12 +433,12 @@ let make_lowlevel ?switch ?(capabilities=OBus_auth.capabilities) ?mechanisms ?(a
               abort exn
 
           | None ->
-              lwt nonce, nonce_file =
+              let%lwt nonce, nonce_file =
                 if List.exists (fun addr -> OBus_address.name addr = "nonce-tcp") addresses then begin
                   let nonce = OBus_util.random_string 16 in
                   let file_name = Filename.concat (Filename.get_temp_dir_name ()) ("obus-" ^ OBus_util.hex_encode (OBus_util.random_string 10)) in
-                  try_lwt
-                    lwt () = Lwt_io.with_file ~mode:Lwt_io.output file_name (fun oc -> Lwt_io.write oc nonce) in
+                  try%lwt
+                    let%lwt () = Lwt_io.with_file ~mode:Lwt_io.output file_name (fun oc -> Lwt_io.write oc nonce) in
                     Lwt.return (nonce, file_name)
                   with Unix.Unix_error(err, _, _) ->
                     abort (Failure(Printf.sprintf "cannot create nonce file '%s': %s" file_name (Unix.error_message err)))
@@ -508,7 +508,7 @@ let make_lowlevel ?switch ?(capabilities=OBus_auth.capabilities) ?mechanisms ?(a
               } in
               server.srv_loops <- Lwt.join (List.map (fun listener -> lst_loop server listener) listeners);
 
-              lwt () = Lwt_switch.add_hook_or_exec switch (fun () -> shutdown server) in
+              let%lwt () = Lwt_switch.add_hook_or_exec switch (fun () -> shutdown server) in
               Lwt.return server
 
 let make ?switch ?capabilities ?mechanisms ?addresses ?allow_anonymous callback =

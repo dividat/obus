@@ -175,9 +175,9 @@ let connect ?switch sd =
   (* Switch freeing resources allocated for this signal: *)
   let resources_switch = Lwt_switch.create () in
 
-  try_lwt
+  try%lwt
     (* Add the match rule if requested: *)
-    lwt () =
+    let%lwt () =
       if sd.match_rule then
         OBus_match.export
           ~switch:resources_switch
@@ -198,7 +198,7 @@ let connect ?switch sd =
         if OBus_name.is_unique name then
           Lwt.return (Some (S.const name))
         else
-          lwt owner = OBus_resolver.make ~switch:resources_switch connection name in
+          let%lwt owner = OBus_resolver.make ~switch:resources_switch connection name in
           Lwt.return (Some owner)
       else
         Lwt.return None
@@ -243,13 +243,13 @@ let connect ?switch sd =
     in
 
     let disconnect = lazy(
-      try_lwt
+      try%lwt
         Lwt_sequence.remove node;
         if Lwt_sequence.is_empty senders then
           info.senders <- Signal_map.remove (sd.path, sd.interface, sd.member) info.senders;
         Lwt_switch.turn_off resources_switch
       with exn ->
-        lwt () =
+        let%lwt () =
           Lwt_log.warning_f
             ~section
             ~exn
@@ -261,12 +261,12 @@ let connect ?switch sd =
                | None -> "<any>")
             (OBus_peer.name sd.peer)
         in
-        raise_lwt exn
+        [%lwt raise exn]
     ) in
 
     let event = E.with_finaliser (finalise disconnect) (E.map snd (sd.map event)) in
 
-    lwt () =
+    let%lwt () =
       Lwt_switch.add_hook_or_exec
         switch
         (fun () ->
@@ -276,8 +276,8 @@ let connect ?switch sd =
 
     Lwt.return event
   with exn ->
-    lwt () = Lwt_switch.turn_off resources_switch in
-    raise_lwt exn
+    let%lwt () = Lwt_switch.turn_off resources_switch in
+    [%lwt raise exn]
 
 (* +-----------------------------------------------------------------+
    | Emitting signals                                                |

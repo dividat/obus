@@ -57,7 +57,7 @@ let call proxy ~interface ~member ~i_args ~o_args args =
     args
 
 let call_with_context proxy ~interface ~member ~i_args ~o_args args =
-  lwt msg, result =
+  let%lwt msg, result =
     OBus_connection.method_call_with_message
       ~connection:proxy.peer.connection
       ~destination:proxy.peer.name
@@ -85,7 +85,7 @@ let call_no_reply proxy ~interface ~member ~i_args args =
    +-----------------------------------------------------------------+ *)
 
 let introspect proxy =
-  lwt str =
+  let%lwt str =
     call proxy ~interface:"org.freedesktop.DBus.Introspectable" ~member:"Introspect"
       ~i_args:OBus_value.C.seq0
       ~o_args:(OBus_value.C.seq1 OBus_value.C.basic_string)
@@ -94,4 +94,4 @@ let introspect proxy =
   try
     Lwt.return (OBus_introspect.input (Xmlm.make_input ~strip:true (`String(0, str))))
   with Xmlm.Error((line, column), err) ->
-    raise_lwt (Failure(Printf.sprintf "OBus_proxy.introspect: invalid document, at line %d: %s" line (Xmlm.error_message err)))
+    [%lwt raise (Failure(Printf.sprintf "OBus_proxy.introspect: invalid document, at line %d: %s" line (Xmlm.error_message err)))]

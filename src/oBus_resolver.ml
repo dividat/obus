@@ -67,7 +67,7 @@ let has_exited peer_name info =
 let key = OBus_connection.new_key ()
 
 let get_name_owner connection name =
-  try_lwt
+  try%lwt
     OBus_connection.method_call
       ~connection
       ~destination:OBus_protocol.bus_name
@@ -131,7 +131,7 @@ let make ?switch connection name =
   if OBus_name.is_unique name && has_exited name info then
     Lwt.return (S.const "")
   else begin
-    lwt resolver, export_switch =
+    let%lwt resolver, export_switch =
       match try Some(String_map.find name info.resolvers) with Not_found -> None with
         | Some thread ->
             thread
@@ -139,8 +139,8 @@ let make ?switch connection name =
             let waiter, wakener = Lwt.wait () in
             info.resolvers <- String_map.add name waiter info.resolvers;
             let export_switch = Lwt_switch.create () in
-            try_lwt
-              lwt () =
+            try%lwt
+              let%lwt () =
                 OBus_match.export
                   ~switch:export_switch
                   connection
@@ -152,7 +152,7 @@ let make ?switch connection name =
                      ~path:OBus_protocol.bus_path
                      ~arguments:(OBus_match.make_arguments [(0, OBus_match.AF_string name)]) ())
               in
-              lwt current_owner = get_name_owner connection name in
+              let%lwt current_owner = get_name_owner connection name in
               let owner, set_owner = S.create current_owner in
               let resolver = { count = 0; owner; set_owner } in
               Lwt.wakeup wakener (resolver, export_switch);
@@ -160,14 +160,14 @@ let make ?switch connection name =
             with exn ->
               info.resolvers <- String_map.remove name info.resolvers;
               Lwt.wakeup_exn wakener exn;
-              lwt () = Lwt_switch.turn_off export_switch in
-              raise_lwt exn
+              let%lwt () = Lwt_switch.turn_off export_switch in
+              [%lwt raise exn]
     in
 
     resolver.count <- resolver.count + 1;
 
     let remove = lazy(
-      try_lwt
+      try%lwt
         resolver.count <- resolver.count - 1;
         if resolver.count = 0 then begin
           (* The resolver is no more used, so we disable it: *)
@@ -176,13 +176,13 @@ let make ?switch connection name =
         end else
           Lwt.return ()
       with exn ->
-        lwt () = Lwt_log.warning_f ~section ~exn "failed to disable resolver for name %S" name in
-        raise_lwt exn
+        let%lwt () = Lwt_log.warning_f ~section ~exn "failed to disable resolver for name %S" name in
+        [%lwt raise exn]
     ) in
 
     let owner = S.with_finaliser (finalise remove) resolver.owner in
 
-    lwt () =
+    let%lwt () =
       Lwt_switch.add_hook_or_exec
         switch
         (fun () ->

@@ -25,7 +25,7 @@ let max_line_length = 42 * 1024
 let max_reject = 42
 
 exception Auth_failure of string
-let auth_failure fmt = ksprintf (fun msg -> raise_lwt (Auth_failure msg)) fmt
+let auth_failure fmt = ksprintf (fun msg -> [%lwt raise (Auth_failure msg)]) fmt
 
 let () =
   Printexc.register_printer
@@ -92,12 +92,12 @@ end = struct
   type context = string
 
   let keyring_directory = lazy(
-    lwt homedir = Lazy.force OBus_util.homedir in
+    let%lwt homedir = Lazy.force OBus_util.homedir in
     Lwt.return (Filename.concat homedir ".dbus-keyrings")
   )
 
   let keyring_file_name context =
-    lwt dir = Lazy.force keyring_directory in
+    let%lwt dir = Lazy.force keyring_directory in
     Lwt.return (Filename.concat dir context)
 
   let parse_line line =
@@ -110,14 +110,14 @@ end = struct
     sprintf  "%ld %Ld %s" (Cookie.id cookie) (Cookie.time cookie) (Cookie.cookie cookie)
 
   let load context =
-    lwt fname = keyring_file_name context in
+    let%lwt fname = keyring_file_name context in
     if Sys.file_exists fname then
-      try_lwt
+      try%lwt
         Lwt_stream.get_while (fun _ -> true) (Lwt_stream.map parse_line (Lwt_io.lines_of_file fname))
       with exn ->
-        lwt fname = keyring_file_name context in
-        lwt () = Lwt_log.error_f ~exn ~section "failed to load cookie file %s" fname in
-        raise_lwt exn
+        let%lwt fname = keyring_file_name context in
+        let%lwt () = Lwt_log.error_f ~exn ~section "failed to load cookie file %s" fname in
+        [%lwt raise exn]
     else
       Lwt.return []
 
@@ -131,68 +131,68 @@ end = struct
     in
     let rec aux = function
       | 0 ->
-          lwt () =
-            try_lwt
-              lwt () = Lwt_unix.unlink fname in
+          let%lwt () =
+            try%lwt
+              let%lwt () = Lwt_unix.unlink fname in
               Lwt_log.info_f ~section "stale lock file %s removed" fname
             with Unix.Unix_error(error, _, _) as exn ->
-              lwt () = Lwt_log.error_f ~section "failed to remove stale lock file %s: %s" fname (Unix.error_message error) in
-              raise_lwt exn
+              let%lwt () = Lwt_log.error_f ~section "failed to remove stale lock file %s: %s" fname (Unix.error_message error) in
+              [%lwt raise exn]
           in
-          (try_lwt
+          (try%lwt
              really_lock ()
            with Unix.Unix_error(error, _, _) as exn ->
-             lwt () = Lwt_log.error_f ~section "failed to lock file %s after removing it: %s" fname (Unix.error_message error) in
-             raise_lwt exn)
+             let%lwt () = Lwt_log.error_f ~section "failed to lock file %s after removing it: %s" fname (Unix.error_message error) in
+             [%lwt raise exn])
       | n ->
-          try_lwt
+          try%lwt
             really_lock ()
           with exn ->
-            lwt () = Lwt_log.info_f ~section "waiting for lock file (%d) %s" n fname in
-            lwt () = Lwt_unix.sleep 0.250 in
+            let%lwt () = Lwt_log.info_f ~section "waiting for lock file (%d) %s" n fname in
+            let%lwt () = Lwt_unix.sleep 0.250 in
             aux (n - 1)
     in
     aux 32
 
   let unlock_file fname =
-    try_lwt
+    try%lwt
       Lwt_unix.unlink fname
     with Unix.Unix_error(error, _, _) as exn ->
-      lwt () = Lwt_log.error_f ~section "failed to unlink file %s: %s" fname (Unix.error_message error) in
-      raise_lwt exn
+      let%lwt () = Lwt_log.error_f ~section "failed to unlink file %s: %s" fname (Unix.error_message error) in
+      [%lwt raise exn]
 
   let save context cookies =
-    lwt fname = keyring_file_name context in
+    let%lwt fname = keyring_file_name context in
     let tmp_fname = fname ^ "." ^ hex_encode (OBus_util.random_string 8) in
     let lock_fname = fname ^ ".lock" in
-    lwt dir = Lazy.force keyring_directory in
-    lwt () =
+    let%lwt dir = Lazy.force keyring_directory in
+    let%lwt () =
       (* Check that the keyring directory exists, or create it *)
       if not (Sys.file_exists dir) then begin
-        try_lwt
+        try%lwt
           Lwt_unix.mkdir dir 0o700
         with Unix.Unix_error(error, _, _) as exn ->
-          lwt () = Lwt_log.error_f ~section "failed to create directory %s with permissions 0600: %s" dir (Unix.error_message error) in
-          raise_lwt exn
+          let%lwt () = Lwt_log.error_f ~section "failed to create directory %s with permissions 0600: %s" dir (Unix.error_message error) in
+          [%lwt raise exn]
       end else
         Lwt.return ()
     in
-    lwt () = lock_file lock_fname in
-    try_lwt
-      lwt () =
-        try_lwt
+    let%lwt () = lock_file lock_fname in begin
+      let%lwt () =
+        try%lwt
           Lwt_io.lines_to_file tmp_fname (Lwt_stream.map print_line (Lwt_stream.of_list cookies))
         with exn ->
-          lwt () = Lwt_log.error_f ~exn ~section "unable to write temporary keyring file %s" tmp_fname in
-          raise_lwt exn
+          let%lwt () = Lwt_log.error_f ~exn ~section "unable to write temporary keyring file %s" tmp_fname in
+          [%lwt raise exn]
       in
       try
         Lwt_unix.rename tmp_fname fname
       with Unix.Unix_error(error, _, _) as exn ->
-        lwt () = Lwt_log.error_f ~section "unable to rename file %s to %s: %s" tmp_fname fname (Unix.error_message error) in
-        raise_lwt exn
-      finally
-        unlock_file lock_fname
+        let%lwt () = Lwt_log.error_f ~section "unable to rename file %s to %s: %s" tmp_fname fname (Unix.error_message error) in
+        [%lwt raise exn]
+    end
+    [%lwt.finally 
+      unlock_file lock_fname]
 end
 
 (* +-----------------------------------------------------------------+
@@ -206,23 +206,23 @@ type stream = {
 
 let make_stream ~recv ~send = {
   recv = (fun () ->
-            try_lwt
+            try%lwt
               recv ()
             with
               | Auth_failure _ as exn ->
-                  raise_lwt exn
+                  [%lwt raise exn]
               | End_of_file ->
-                  raise_lwt (Auth_failure("input: premature end of input"))
+                  [%lwt raise (Auth_failure("input: premature end of input"))]
               | exn ->
-                  raise_lwt (Auth_failure("input: " ^ Printexc.to_string exn)));
+                  [%lwt raise (Auth_failure("input: " ^ Printexc.to_string exn))]);
   send = (fun line ->
-            try_lwt
+            try%lwt
               send line
             with
               | Auth_failure _ as exn ->
-                  raise_lwt exn
+                  [%lwt raise exn]
               | exn ->
-                  raise_lwt (Auth_failure("output: " ^ Printexc.to_string exn)));
+                  [%lwt raise (Auth_failure("output: " ^ Printexc.to_string exn))]);
 }
 
 let stream_of_channels (ic, oc) =
@@ -231,11 +231,11 @@ let stream_of_channels (ic, oc) =
              let buf = Buffer.create 42 in
              let rec loop last =
                if Buffer.length buf > max_line_length then
-                 raise_lwt (Auth_failure "input: line too long")
+                 [%lwt raise (Auth_failure "input: line too long")]
                else
                  Lwt_io.read_char_opt ic >>= function
                    | None ->
-                       raise_lwt (Auth_failure "input: premature end of input")
+                       [%lwt raise (Auth_failure "input: premature end of input")]
                    | Some ch ->
                        Buffer.add_char buf ch;
                        if last = '\r' && ch = '\n' then
@@ -245,7 +245,7 @@ let stream_of_channels (ic, oc) =
              in
              loop '\x00')
     ~send:(fun line ->
-             lwt () = Lwt_io.write oc line in
+             let%lwt () = Lwt_io.write oc line in
              Lwt_io.flush oc)
 
 let stream_of_fd fd =
@@ -254,11 +254,11 @@ let stream_of_fd fd =
              let buf = Buffer.create 42 and tmp = Bytes.create 1 in
              let rec loop last =
                if Buffer.length buf > max_line_length then
-                 raise_lwt (Auth_failure "input: line too long")
+                 [%lwt raise (Auth_failure "input: line too long")]
                else
                  Lwt_unix.read fd tmp 0 1 >>= function
                    | 0 ->
-                       raise_lwt (Auth_failure "input: premature end of input")
+                       [%lwt raise (Auth_failure "input: premature end of input")]
                    | 1 ->
                        let ch = Bytes.get tmp 0 in
                        Buffer.add_char buf ch;
@@ -277,7 +277,7 @@ let stream_of_fd fd =
                else
                  Lwt_unix.write_string fd line ofs len >>= function
                    | 0 ->
-                       raise_lwt (Auth_failure "output: zero byte written")
+                       [%lwt raise (Auth_failure "output: zero byte written")]
                    | n ->
                        assert (n > 0 && n <= len);
                        loop (ofs + n) (len - n)
@@ -289,10 +289,10 @@ let send_line mode stream line =
   stream.send (line ^ "\r\n")
 
 let rec recv_line stream =
-  lwt line = stream.recv () in
+  let%lwt line = stream.recv () in
   let len = String.length line in
   if len < 2 || not (line.[len - 2] = '\r' && line.[len - 1] = '\n') then
-    raise_lwt (Auth_failure("input: invalid line received"))
+    [%lwt raise (Auth_failure("input: invalid line received"))]
   else
     Lwt.return (String.sub line 0 (len - 2))
 
@@ -340,8 +340,8 @@ let preprocess_line line =
   (String.sub line 0 i, sub_strip line i (String.length line))
 
 let rec recv mode command_parser stream =
-  lwt line = recv_line stream in
-  lwt () = Lwt_log.debug_f ~section "%s: received: %S" mode line in
+  let%lwt line = recv_line stream in
+  let%lwt () = Lwt_log.debug_f ~section "%s: received: %S" mode line in
 
   (* If a parse failure occur, return an error and try again *)
   match
@@ -353,9 +353,9 @@ let rec recv mode command_parser stream =
   with
     | `Success x -> Lwt.return x
     | `Failure(Failure msg) ->
-        lwt () = send_line mode stream ("ERROR \"" ^ msg ^ "\"") in
+        let%lwt () = send_line mode stream ("ERROR \"" ^ msg ^ "\"") in
         recv mode command_parser stream
-    | `Failure exn -> raise_lwt exn
+    | `Failure exn -> [%lwt raise exn]
 
 let client_recv = recv "client"
   (fun command args -> match command with
@@ -442,9 +442,9 @@ struct
   class mech_dbus_cookie_sha1_handler = object
     method init = Lwt.return (Mech_continue(string_of_int (Unix.getuid ())))
     method data chal =
-      lwt () = Lwt_log.debug_f ~section "client: dbus_cookie_sha1: chal: %s" chal in
+      let%lwt () = Lwt_log.debug_f ~section "client: dbus_cookie_sha1: chal: %s" chal in
       let context, id, chal = Scanf.sscanf chal "%[^/\\ \n\r.] %ld %[a-fA-F0-9]%!" (fun context id chal -> (context, id, chal)) in
-      lwt keyring = Keyring.load context in
+      let%lwt keyring = Keyring.load context in
       let cookie =
         try
           List.find (fun cookie -> cookie.Cookie.id = id) keyring
@@ -453,7 +453,7 @@ struct
       in
       let rand = hex_encode (OBus_util.random_string 16) in
       let resp = sprintf "%s %s" rand (hex_encode (OBus_util.sha_1 (sprintf "%s:%s:%s" chal rand cookie.Cookie.cookie))) in
-      lwt () = Lwt_log.debug_f ~section "client: dbus_cookie_sha1: resp: %s" resp in
+      let%lwt () = Lwt_log.debug_f ~section "client: dbus_cookie_sha1: resp: %s" resp in
       Lwt.return (Mech_ok resp)
     method abort = ()
   end
@@ -500,7 +500,7 @@ struct
                 aux mechs
             | _ ->
                 let mech = f () in
-                try_lwt
+                try%lwt
                   mech#init >>= function
                     | Mech_continue resp ->
                         Lwt.return (Transition(Client_auth(Some (name, Some resp)),
@@ -524,7 +524,7 @@ struct
     | Waiting_for_data mech -> begin match cmd with
         | Server_data chal ->
             begin
-              try_lwt
+              try%lwt
                 mech#data chal >>= function
                   | Mech_continue resp ->
                       Lwt.return (Transition(Client_data resp,
@@ -585,13 +585,13 @@ struct
   let authenticate ?(capabilities=[]) ?(mechanisms=default_mechanisms) ~stream () =
     let rec loop = function
       | Transition(cmd, state, mechs) ->
-          lwt () = client_send stream cmd in
-          lwt cmd = client_recv stream in
+          let%lwt () = client_send stream cmd in
+          let%lwt cmd = client_recv stream in
           transition mechs state cmd >>= loop
       | Success guid ->
-          lwt caps =
+          let%lwt caps =
             if List.mem `Unix_fd capabilities then
-              lwt () = client_send stream Client_negotiate_unix_fd in
+              let%lwt () = client_send stream Client_negotiate_unix_fd in
               client_recv stream >>= function
                 | Server_agree_unix_fd ->
                     Lwt.return [`Unix_fd]
@@ -604,7 +604,7 @@ struct
             else
               Lwt.return []
           in
-          lwt () = client_send stream Client_begin in
+          let%lwt () = client_send stream Client_begin in
           Lwt.return (guid, caps)
       | Failure ->
           auth_failure "authentication failure"
@@ -665,17 +665,17 @@ struct
     val mutable user_id = None
 
     method data resp =
-      try_lwt
-        lwt () = Lwt_log.debug_f ~section "server: dbus_cookie_sha1: resp: %s" resp in
+      try%lwt
+        let%lwt () = Lwt_log.debug_f ~section "server: dbus_cookie_sha1: resp: %s" resp in
         match state with
           | `State1 ->
               user_id <- (try Some(int_of_string resp) with _ -> None);
-              lwt keyring = Keyring.load context in
+              let%lwt keyring = Keyring.load context in
               let cur_time = Int64.of_float (Unix.time ()) in
               (* Filter old and future keys *)
               let keyring = List.filter (fun { Cookie.time = time } -> time <= cur_time && Int64.sub cur_time time <= 300L) keyring in
               (* Find a working cookie *)
-              lwt id, cookie = match keyring with
+              let%lwt id, cookie = match keyring with
                 | { Cookie.id = id; Cookie.cookie = cookie } :: _ ->
                     (* There is still valid cookies, just choose one *)
                     Lwt.return (id, cookie)
@@ -683,12 +683,12 @@ struct
                     (* No one left, generate a new one *)
                     let id = Int32.abs (OBus_util.random_int32 ()) in
                     let cookie = hex_encode (OBus_util.random_string 24) in
-                    lwt () = Keyring.save context [{ Cookie.id = id; Cookie.time = cur_time; Cookie.cookie = cookie }] in
+                    let%lwt () = Keyring.save context [{ Cookie.id = id; Cookie.time = cur_time; Cookie.cookie = cookie }] in
                     Lwt.return (id, cookie)
               in
               let rand = hex_encode (OBus_util.random_string 16) in
               let chal = sprintf "%s %ld %s" context id rand in
-              lwt () = Lwt_log.debug_f ~section "server: dbus_cookie_sha1: chal: %s" chal in
+              let%lwt () = Lwt_log.debug_f ~section "server: dbus_cookie_sha1: chal: %s" chal in
               state <- `State2(cookie, rand);
               Lwt.return (Mech_continue chal)
 
@@ -755,8 +755,8 @@ struct
                   reject mechs
               | Some f ->
                   let mech = f user_id in
-                  try_lwt
-                    lwt init = mech#init in
+                  try%lwt
+                    let%lwt init = mech#init in
                     match init, resp with
                       | None, None ->
                           Lwt.return (Transition(Server_data "",
@@ -789,7 +789,7 @@ struct
             Lwt.return (Transition(Server_data "",
                                    Waiting_for_data mech))
         | Client_data resp -> begin
-            try_lwt
+            try%lwt
               mech#data resp >>= function
                 | Mech_continue chal ->
                     Lwt.return (Transition(Server_data chal,
@@ -832,7 +832,7 @@ struct
 
   let authenticate ?(capabilities=[]) ?(mechanisms=default_mechanisms) ?user_id ~guid ~stream () =
     let rec loop state count =
-      lwt cmd = server_recv stream in
+      let%lwt cmd = server_recv stream in
       transition user_id guid capabilities mechanisms state cmd >>= function
         | Transition(cmd, state) ->
             let count =
@@ -845,7 +845,7 @@ struct
             if count >= max_reject then
               auth_failure "too many reject"
             else
-              lwt () = server_send stream cmd in
+              let%lwt () = server_send stream cmd in
               loop state count
         | Accept(uid, caps) ->
             Lwt.return (uid, caps)

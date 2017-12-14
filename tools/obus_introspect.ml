@@ -29,7 +29,7 @@ options are:" (Filename.basename (Sys.argv.(0)))
 module Interface_map = Map.Make(struct type t = string let compare = compare end)
 
 let rec get proxy =
-  lwt interfaces, children = OBus_proxy.introspect proxy in
+  let%lwt interfaces, children = OBus_proxy.introspect proxy in
   let map = List.fold_left (fun map (name, content, annots) ->
                               Interface_map.add name (content, annots) map)
     Interface_map.empty interfaces in
@@ -38,7 +38,7 @@ let rec get proxy =
     | true ->
         List.fold_left
           (fun t1 t2 ->
-             lwt nodes1, map1 = t1 and nodes2, map2 = t2 in
+             let%lwt nodes1, map1 = t1 and nodes2, map2 = t2 in
              Lwt.return (nodes1 @ nodes2, Interface_map.fold Interface_map.add map1 map2))
           (Lwt.return (nodes, map))
           (List.map
@@ -49,7 +49,7 @@ let rec get proxy =
         Lwt.return (nodes, map)
 
 let main service path =
-  lwt bus = match !session, !system, !address with
+  let%lwt bus = match !session, !system, !address with
     | true, true, _
     | true, _, Some _
     | _, true, Some _ ->
@@ -61,7 +61,7 @@ let main service path =
     | false, true, None -> OBus_bus.system ()
     | false, false, Some addr -> OBus_bus.of_addresses (OBus_address.of_string addr)
   in
-  lwt nodes, map = get (OBus_proxy.make (OBus_peer.make bus service) path) in
+  let%lwt nodes, map = get (OBus_proxy.make (OBus_peer.make bus service) path) in
   begin
     match !obj_mode with
       | false ->

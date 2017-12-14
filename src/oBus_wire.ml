@@ -841,7 +841,7 @@ let write_message oc ?byte_order msg =
     | str, [||] ->
         Lwt_io.write oc str
     | _ ->
-        raise_lwt (Data_error "Cannot send a message with file descriptors on a channel")
+        [%lwt raise (Data_error "Cannot send a message with file descriptors on a channel")]
 
 type writer = {
   w_channel : Lwt_io.output_channel;
@@ -863,10 +863,10 @@ let write_message_with_fds writer ?byte_order msg =
     | buf, fds ->
         Lwt_io.atomic begin fun oc ->
           (* Ensures there is nothing left to send: *)
-          lwt () = Lwt_io.flush oc in
+          let%lwt () = Lwt_io.flush oc in
           let len = String.length buf in
           (* Send the file descriptors and the message: *)
-          lwt n = Lwt_unix.send_msg writer.w_file_descr [Lwt_unix.io_vector buf 0 len] (Array.to_list fds) in
+          let%lwt n = Lwt_unix.send_msg writer.w_file_descr [Lwt_unix.io_vector buf 0 len] (Array.to_list fds) in
           assert (n >= 0 && n <= len);
           (* Write what is remaining: *)
           Lwt_io.write_from_string_exactly oc buf n (len - n)
@@ -1191,10 +1191,10 @@ module LE_reader = Make_reader(LE_integer_readers)
 module BE_reader = Make_reader(BE_integer_readers)
 
 let read_message ic =
-  try_lwt
+  try%lwt
     Lwt_io.atomic begin fun ic ->
       let buffer = Bytes.create 16 in
-      lwt () = Lwt_io.read_into_exactly ic buffer 0 16 in
+      let%lwt () = Lwt_io.read_into_exactly ic buffer 0 16 in
       let buffer = Bytes.unsafe_to_string buffer in
       (match get_char buffer 0 with
          | 'l' -> LE_reader.read_message
@@ -1204,7 +1204,7 @@ let read_message ic =
         (fun length f ->
            let length = length - 16 in
            let buffer = Bytes.create length in
-           lwt () = Lwt_io.read_into_exactly ic buffer 0 length in
+           let%lwt () = Lwt_io.read_into_exactly ic buffer 0 length in
            let buffer = Bytes.unsafe_to_string buffer in
            f { buf = buffer; ofs = 0; max = length; fds = [||] } None Lwt.return)
     end ic
@@ -1234,7 +1234,7 @@ type reader = {
 let close_reader reader =
   let fds = Queue.fold (fun fds fd -> fd :: fds) [] reader.r_pending_fds in
   Queue.clear reader.r_pending_fds;
-  lwt () =
+  let%lwt () =
     Lwt_list.iter_p
       (fun fd ->
          try
@@ -1250,7 +1250,7 @@ let reader fd =
   {
     r_channel = Lwt_io.make ~mode:Lwt_io.input
       (fun buf ofs len ->
-         lwt n, fds = Lwt_bytes.recv_msg fd [Lwt_bytes.io_vector buf ofs len] in
+        let%lwt n, fds = Lwt_bytes.recv_msg fd [Lwt_bytes.io_vector buf ofs len] in
          List.iter (fun fd ->
                       (try Unix.set_close_on_exec fd with _ -> ());
                       Queue.push fd pending_fds) fds;
@@ -1260,10 +1260,10 @@ let reader fd =
 
 let read_message_with_fds reader  =
   let consumed_fds = ref [] in
-  try_lwt
+  try%lwt
     Lwt_io.atomic begin fun ic ->
       let buffer = Bytes.create 16 in
-      lwt () = Lwt_io.read_into_exactly ic buffer 0 16 in
+      let%lwt () = Lwt_io.read_into_exactly ic buffer 0 16 in
       let buffer = Bytes.unsafe_to_string buffer in
       (match get_char buffer 0 with
          | 'l' -> LE_reader.read_message
@@ -1273,12 +1273,12 @@ let read_message_with_fds reader  =
         (fun length f ->
            let length = length - 16 in
            let buffer = Bytes.create length in
-           lwt () = Lwt_io.read_into_exactly ic buffer 0 length in
+           let%lwt () = Lwt_io.read_into_exactly ic buffer 0 length in
            let buffer = Bytes.unsafe_to_string buffer in
            f { buf = buffer; ofs = 0; max = length; fds = [||] } (Some(consumed_fds, reader.r_pending_fds)) Lwt.return)
     end reader.r_channel
   with exn ->
-    lwt () =
+    let%lwt () =
       Lwt_list.iter_p
         (fun fd ->
            try
@@ -1287,7 +1287,7 @@ let read_message_with_fds reader  =
              Lwt_log.error_f ~section "cannot close file descriptor: %s" (Unix.error_message err))
         !consumed_fds
     in
-    raise_lwt (map_exn protocol_error exn)
+    [%lwt raise (map_exn protocol_error exn)]
 
 (* +-----------------------------------------------------------------+
    | Size computation                                                |

@@ -432,7 +432,7 @@ let rec insert_rule rule rules =
               rule :: rest
 
 let do_export info rule_string =
-  lwt () =
+  let%lwt () =
     OBus_connection.method_call
       ~connection:info.connection
       ~destination:OBus_protocol.bus_name
@@ -448,7 +448,7 @@ let do_export info rule_string =
 
 let do_remove info rule_string =
   info.exported <- String_set.remove rule_string info.exported;
-  try_lwt
+  try%lwt
     OBus_connection.method_call
       ~connection:info.connection
       ~destination:OBus_protocol.bus_name
@@ -463,7 +463,7 @@ let do_remove info rule_string =
       | "org.freedesktop.DBus.Error.MatchRuleNotFound" ->
           Lwt_log.info_f ~section "rule %S does not exists on the message bus" rule_string
       | _ ->
-          raise_lwt exn
+          [%lwt raise exn]
 
 (* Commits rules changes on the message bus: *)
 let commit info =
@@ -511,8 +511,8 @@ let export ?switch connection rule =
           info
   in
   info.rules <- rule :: info.rules;
-  lwt () = commit info in
-  lwt () =
+  let%lwt () = commit info in
+  let%lwt () =
     Lwt_switch.add_hook_or_exec switch
       (fun () ->
          info.rules <- remove_first rule info.rules;

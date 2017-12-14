@@ -95,7 +95,7 @@ let print_impl oc name members symbols annotations =
                 | (false, name) -> fprintf oc " %s" name
                 | (true, name) -> fprintf oc " ~%s" name)
              (make_names i_args);
-           output_string oc " =\n    raise_lwt (Failure \"not implemented\")\n"
+           output_string oc " =\n    [%lwt raise (Failure \"not implemented\")]\n"
        | _ ->
            ())
     members;
@@ -114,7 +114,7 @@ let print_impl oc name members symbols annotations =
                 | Some(name, f) -> fprintf oc "          let %s = %s %s in\n" name f name
                 | None -> ())
              i_convertors;
-           fprintf oc "          lwt %a = %s (OBus_object.get obj)" print_names o_names (OBus_name.ocaml_lid name);
+           fprintf oc "          let%%lwt %a = %s (OBus_object.get obj)" print_names o_names (OBus_name.ocaml_lid name);
            List.iter (fun (_, name) -> fprintf oc " %s" name) i_names;
            output_string oc " in\n";
            List.iter

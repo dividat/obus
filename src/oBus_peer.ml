@@ -23,7 +23,7 @@ let make ~connection ~name = { connection = connection; name = name }
 let anonymous c = { connection = c; name = "" }
 
 let ping peer =
-  lwt reply, () =
+  let%lwt reply, () =
     OBus_connection.method_call_with_message
       ~connection:peer.connection
       ~destination:OBus_protocol.bus_name
@@ -37,7 +37,7 @@ let ping peer =
   Lwt.return { peer with name = OBus_message.sender reply }
 
 let get_machine_id peer =
-  lwt mid =
+  let%lwt mid =
     OBus_connection.method_call
       ~connection:peer.connection
       ~destination:OBus_protocol.bus_name
@@ -51,23 +51,22 @@ let get_machine_id peer =
   try
     Lwt.return (OBus_uuid.of_string mid)
   with exn ->
-    raise_lwt exn
+    [%lwt raise exn]
 
 let wait_for_exit peer =
   match peer.name with
     | "" ->
-        raise_lwt (Invalid_argument "OBus_peer.wait_for_exit: peer has no name")
+        [%lwt raise (Invalid_argument "OBus_peer.wait_for_exit: peer has no name")]
     | name ->
         let switch = Lwt_switch.create () in
-        lwt owner = OBus_resolver.make ~switch peer.connection name in
+        let%lwt owner = OBus_resolver.make ~switch peer.connection name in
         if S.value owner = "" then
           Lwt_switch.turn_off switch
         else
-          try_lwt
-            lwt _ = E.next (E.filter ((=) "") (S.changes owner)) in
-            Lwt.return ()
-          finally
-            Lwt_switch.turn_off switch
+          (let%lwt _ = E.next (E.filter ((=) "") (S.changes owner)) in
+           Lwt.return ())
+          [%lwt.finally
+            Lwt_switch.turn_off switch]
 
 (* +-----------------------------------------------------------------+
    | Private peers                                                   |
