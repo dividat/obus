@@ -140,25 +140,25 @@ let system ?switch () =
    +-----------------------------------------------------------------+ *)
 
 exception Access_denied of string
- with obus("org.freedesktop.DBus.Error.AccessDenied")
+  [@@obus "org.freedesktop.DBus.Error.AccessDenied"]
 
 exception Service_unknown of string
- with obus("org.freedesktop.DBus.Error.ServiceUnknown")
+  [@@obus "org.freedesktop.DBus.Error.ServiceUnknown"]
 
 exception Match_rule_not_found of string
- with obus("org.freedesktop.DBus.Error.MatchRuleNotFound")
+  [@@obus "org.freedesktop.DBus.Error.MatchRuleNotFound"]
 
 exception Match_rule_invalid of string
- with obus("org.freedesktop.DBus.Error.MatchRuleInvalid")
+  [@@obus "org.freedesktop.DBus.Error.MatchRuleInvalid"]
 
 exception Name_has_no_owner of string
- with obus("org.freedesktop.DBus.Error.NameHasNoOwner")
+  [@@obus "org.freedesktop.DBus.Error.NameHasNoOwner"]
 
 exception Adt_audit_data_unknown of string
- with obus("org.freedesktop.DBus.Error.AdtAuditDataUnknown")
+  [@@obus "org.freedesktop.DBus.Error.AdtAuditDataUnknown"]
 
 exception Selinux_security_context_unknown of string
- with obus("org.freedesktop.DBus.Error.SELinuxSecurityContextUnknown")
+  [@@obus "org.freedesktop.DBus.Error.SELinuxSecurityContextUnknown"]
 
 let hello bus =
   OBus_method.call m_Hello (proxy bus) ()

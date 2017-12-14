@@ -80,7 +80,7 @@ module Register(Error : Error) : sig end
 
       {[
         exception My_exception of string
-          with obus("my.exception.name")
+          [@@obus "my.exception.name"]
       ]}
   *)
 

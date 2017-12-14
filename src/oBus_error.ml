@@ -97,28 +97,28 @@ end
    +-----------------------------------------------------------------+ *)
 
 exception Failed of message
-  with obus("org.freedesktop.DBus.Error.Failed")
+  [@@obus "org.freedesktop.DBus.Error.Failed"]
 
 exception Invalid_args of message
-  with obus("org.freedesktop.DBus.Error.InvalidArgs")
+  [@@obus "org.freedesktop.DBus.Error.InvalidArgs"]
 
 exception Unknown_method of message
-  with obus("org.freedesktop.DBus.Error.UnknownMethod")
+  [@@obus "org.freedesktop.DBus.Error.UnknownMethod"]
 
 exception Unknown_object of message
-  with obus("org.freedesktop.DBus.Error.UnknownObject")
+  [@@obus "org.freedesktop.DBus.Error.UnknownObject"]
 
 exception Unknown_interface of message
-  with obus("org.freedesktop.DBus.Error.UnknownInterface")
+  [@@obus "org.freedesktop.DBus.Error.UnknownInterface"]
 
 exception Unknown_property of message
-  with obus("org.freedesktop.DBus.Error.UnknownProperty")
+  [@@obus "org.freedesktop.DBus.Error.UnknownProperty"]
 
 exception Property_read_only of message
-  with obus("org.freedesktop.DBus.Error.PropertyReadOnly")
+  [@@obus "org.freedesktop.DBus.Error.PropertyReadOnly"]
 
 exception No_memory of message
-  with obus("org.freedesktop.DBus.Error.NoMemory")
+  [@@obus "org.freedesktop.DBus.Error.NoMemory"]
 
 exception No_reply of message
-  with obus("org.freedesktop.DBus.Error.NoReply")
+  [@@obus "org.freedesktop.DBus.Error.NoReply"]
