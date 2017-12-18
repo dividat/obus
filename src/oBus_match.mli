@@ -27,14 +27,14 @@ type argument_filter =
           - [arg] ends with ['/'] and is a prefix of [path] *)
   | AF_namespace of string
       (** [AF_namespace namespace] matches any string argument [arg]
-          such that [arg] is bus or interface name in the namespace of
+          such that [arg] is a bus or interface name in the namespace of
           [namespace]. For example [AF_namespace "a.b.c"] matches any
           string of the form ["a.b.c"], ["a.b.c.foo"],
           ["a.b.c.foo.bar"], ... *)
 
 type arguments = private (int * argument_filter) list
     (** Type of lists of argument filters. The private type ensures
-        that such lists are always sorted by argument number, does not
+        that such lists are always sorted by argument number, do not
         contain duplicates and indexes are in the range [0..63].. *)
 
 val make_arguments : (int * argument_filter) list -> arguments
@@ -123,7 +123,7 @@ exception Parse_failure of string * int * string
       a rule failed *)
 
 val string_of_rule : rule -> string
-  (** Return a string representation of a matching rule. *)
+  (** Returns a string representation of a matching rule. *)
 
 val rule_of_string : string -> rule
   (** Parse a string representation of a matching rule.

@@ -20,7 +20,7 @@ val addresses : t -> OBus_address.t list
 val shutdown : t -> unit Lwt.t
   (** [shutdown server] shutdowns the given server. It terminates when
       all listeners (a server may listen on several addresses) have
-      exited. If the server has already been shutdown, it does
+      exited. If the server has already been shut down, it does
       nothing. *)
 
 val make :
@@ -46,14 +46,14 @@ val make :
              as arguments the server and the connection for the client.
 
       About errors:
-      - if no address are provided, it raises [Invalid_argument],
+      - if no addresses are provided, it raises [Invalid_argument],
       - if an address is invalid, it raises [Invalid_argument]
-      - if listenning fails for one of the addresses, it fails with the
-      exception reported for this address
+      - if listening fails for one of the addresses, it fails with the
+        exception reported for that address
 
-      It succeed if it can listen on at least one address.
+      It succeeds if it can listen on at least one address.
 
-      When a new client connects, the server handle authentication of
+      When a new client connects, the server handles authentication of
       this client, then it creates a transport and the connection on
       top of this transport.
 

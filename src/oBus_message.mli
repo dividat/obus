@@ -35,7 +35,7 @@ val no_auto_start : flags -> bool
   (** [no_auto_start] projection *)
 
 val make_flags : ?no_reply_expected:bool -> ?no_auto_start:bool -> unit -> flags
-  (** Creates message flags. All optionnal arguments default to
+  (** Creates message flags. All optional arguments default to
       [false] *)
 
 val default_flags : flags
@@ -61,7 +61,7 @@ val body : t -> body
 
 (** {6 Helpers for creating messages} *)
 
-(** Note that when creating an message the serial field is not
+(** Note that when creating a message the serial field is not
     relevant, it is overridden by {!OBus_connection} at
     sending-time *)
 
@@ -119,10 +119,9 @@ exception Invalid_reply of string
 
 val invalid_reply : method_call : t -> expected_signature : OBus_value.signature -> method_return : t -> exn
   (** [invalid_reply ~method_call ~expected_signature ~method_return]
-      returns an {!Invalid_reply} exception with a informative
+      @return an {!Invalid_reply} exception with a informative
       description of the error.
-
-      It raises [Invalid_argument] if [method_call] is not a method
+      @raise Invalid_argument if [method_call] is not a method
       call message or [method_return] is not a method return
       message *)
 

@@ -9,7 +9,7 @@
 
 (** Monadic xml parsing *)
 
-(** This module implement a simple monadic xml parser.
+(** This module implements a simple monadic xml parser.
 
     It is intended to make it easy to write XML document parsers. In
     OBus it is used to parse introspection document. *)
@@ -51,7 +51,7 @@ val afd : xml_parser -> string -> 'a -> (string * 'a) list -> 'a
 (** {6 Parsing of elements} *)
 
 val elt : string -> (xml_parser -> 'a) -> 'a node
-  (** [elt typ parser] Create a node parser . It will parse element of
+  (** [elt typ parser] creates a node parser. It will parse element of
       type [typ]. [parser] is used to parse the attributes and
       children of the element.
 
@@ -62,10 +62,10 @@ val pcdata : string node
   (** [pcdata f] parse one PCData *)
 
 val map : 'a node -> ('a -> 'b) -> 'b node
-  (** [map node f] wrap the result of a node parser with [f] *)
+  (** [map node f] wraps the result of a node parser with [f] *)
 
 val union : 'a node list -> 'a node
-  (** [union nodes] Node parser which parse any node matched by one of
+  (** [union nodes] Node parser which parses any node matched by one of
       the given node parsers *)
 
 (** {6 Modifiers} *)

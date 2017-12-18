@@ -12,7 +12,7 @@
 (** For specific restrictions on D-Bus names, see
     @see <http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names> the specification
 
-    General restrisction include:
+    General restrictions include:
 
     - names must not be empty
     - names must contains only ascii characters *)

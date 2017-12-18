@@ -12,19 +12,20 @@
 (** {6 Emitting signals} *)
 
 val emit : 'a OBus_member.Signal.t -> 'b OBus_object.t -> ?peer : OBus_peer.t -> 'a -> unit Lwt.t
-  (** [emit signal obj ?peer args] emit [signal] from [obj]. The
+  (** [emit signal obj ?peer args] emits [signal] from [obj]. The
       destinations of the signal are selected as follow:
 
       - if [peer] is provided, then the message is sent only to it
       - otherwise, if the the object has an owner, it is sent to the owner,
-      - otherwise, the message is broadcasted on all the connection [obj] is exported.
+      - otherwise, the message is broadcasted on all the connections [obj]
+        is exported on.
   *)
 
 (** {6 Receving signals} *)
 
 type 'a t
   (** Type of a signal descriptor. A signal descriptor represent the
-      source of a signal and describe how the value should be
+      source of a signal and describes how the value should be
       transformed. *)
 
 val make : 'a OBus_member.Signal.t -> OBus_proxy.t -> 'a t
@@ -53,7 +54,7 @@ val map_with_context : (OBus_context.t -> 'a -> 'b) -> 'a t -> 'b t
       context. *)
 
 val with_context : 'a t -> (OBus_context.t * 'a) t
-  (** Returns a signal descriptor that returns contexts in which
+  (** @return a signal descriptor that returns contexts in which
       signals are received. *)
 
 val with_filters : OBus_match.arguments -> 'a t -> 'a t

@@ -9,8 +9,8 @@
 
 (** Restriction on strings used with D-Bus *)
 
-(** There are a lot a various restrictions for strings used in D-Bus.
-    Obus only verify strings when a message is sent or received *)
+(** There are a lot of restrictions for strings used in D-Bus.
+    OBus only verifies strings when a message is sent or received *)
 
 type error = {
   (** Contains informations about invalid strings *)
@@ -23,14 +23,14 @@ type error = {
   (** The string which fail to validate *)
 
   ofs : int;
-  (** is the position in byte where the validation failed *)
+  (** is the position in bytes where the validation failed *)
 
   msg : string;
-  (** explain why the string failed to validate *)
+  (** explains why the string failed to validate *)
 }
 
 val error_message : error -> string
-  (** [error_message error] returns a human-readabe error message *)
+  (** [error_message error] returns a human-readable error message *)
 
 (** {8 Error projections} *)
 
@@ -42,7 +42,7 @@ val msg : error -> string
 (** {6 Validators} *)
 
 type validator = string -> error option
-  (** Function which test if a string is correct.
+  (** Tests if a string is correct.
 
       - if it is, returns [None]
       - if not, returns [Some(ofs, msg)] *)
@@ -62,4 +62,4 @@ type t = string
         - a string must not contains the null byte *)
 
 val validate : validator
-  (** Validatition function for commong strings *)
+  (** Validation function for common strings *)

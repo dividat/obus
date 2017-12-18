@@ -28,8 +28,8 @@ type map = (OBus_context.t * OBus_value.V.single) Map.Make(String).t
   (** Type of all properties of an interface. *)
 
 type group
-  (** Type of a group of property. Property groups are used to
-      read/monitor all the property of an interface. *)
+  (** Type of a group of properties. Property groups are used to
+      read/monitor all the properties of an interface. *)
 
 type monitor = OBus_proxy.t -> OBus_name.interface -> Lwt_switch.t -> map React.signal Lwt.t
   (** Type of a function creating a signal holding the contents of all
@@ -45,8 +45,8 @@ val make : ?monitor : monitor -> ('a, 'access) OBus_member.Property.t -> OBus_pr
 val group : ?monitor : monitor -> OBus_proxy.t -> OBus_name.interface -> group
   (** [group ?monitor proxy interface] creates a group for all
       readable properties of the given interface. Note that it is
-      faster to read a group of property rather than reading each
-      properties individually. *)
+      faster to read a group of properties rather than reading each
+      property individually. *)
 
 (** {6 Properties transformation} *)
 
@@ -61,7 +61,7 @@ val map_r : ('a -> 'b) -> ('a, [> `readable ]) t -> 'b r
   (** Maps a read-only property. *)
 
 val map_r_with_context :  (OBus_context.t -> 'a -> 'b) -> ('a, [> `readable ]) t -> 'b r
-  (** Maps a read-only property, passing the conntext to the mapping
+  (** Maps a read-only property, passing the context to the mapping
       function *)
 
 val map_w : ('b -> 'a) -> ('a, [> `writable ]) t -> 'b w

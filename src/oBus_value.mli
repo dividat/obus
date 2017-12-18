@@ -218,7 +218,7 @@ end
 (** Type converters *)
 module C : sig
 
-  (** This module offer a convenient way of constructing a boxed D-Bus
+  (** This module offers a convenient way of constructing a boxed D-Bus
       value from a OCaml value, and of casting a boxed D-Bus value
       into a OCaml value. *)
 
@@ -267,6 +267,7 @@ module C : sig
   val basic_signature : signature single
   val basic_object_path : OBus_path.t single
   val basic_unix_fd : Unix.file_descr single
+
   (** {6 Types extraction} *)
 
   val type_basic : 'a basic -> T.basic

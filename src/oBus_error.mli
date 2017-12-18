@@ -76,7 +76,7 @@ module Register(Error : Error) : sig end
         in ()
       ]}
 
-      But you can althoug write this with the syntax extension:
+      But you can also write this with the syntax extension:
 
       {[
         exception My_exception of string

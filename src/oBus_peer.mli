@@ -41,25 +41,25 @@ val name : t -> OBus_name.bus
     - using bus names such as "org.freedesktop.DBus.Hal" avoid the
     need to resolve the name. When doing the first method call the bus
     will automatically start the service if available. Also if the
-    service restart the peer will still be valid.
+    service restarts the peer will still be valid.
 
     One drawback is that the owner may change over the time, and
     method calls may not be made on the same peer.
 
-    - using unique name, which can be retreived with bus functions
-    (see {!OBus_bus}), ensure that the peer won't change over time.
-    By the way if the service exit, or another application replace it
+    - using a unique name, which can be retreived with bus functions
+    (see {!OBus_bus}), ensures that the peer won't change over time.
+    By the way if the service exits, or another application replaces it
     and we want to always use the default one, we have to write the
     code to handle owner change.
 
-    So, one good strategy is to use bus name when calls do not involve
+    So, one good strategy is to use bus names when calls do not involve
     side-effect on the service such as object creation, and use unique
-    name for object create on our demand. Basically you can stick to
+    names for object created on our demand. Basically you can stick to
     this rule:
 
     Always use bus name for a well-known objects, such as
     "/org/freedesktop/Hal/Manager" on "org.freedesktop.Hal.Manager"
-    and use unique name for objects for which the path is retreived
+    and use unique name for objects for which the path is retrieved
     from a method call.
 *)
 
@@ -79,7 +79,7 @@ val ping : t -> t Lwt.t
       [ping (OBus_peer.make bus "well.known.name")] *)
 
 val get_machine_id : t -> OBus_uuid.t Lwt.t
-  (** Return the id of the machine the peer is running on *)
+  (** @return the id of the machine the peer is running on *)
 
 val wait_for_exit : t -> unit Lwt.t
   (** [wait_for_exit peer] wait until [peer] exit. If [peer] is not

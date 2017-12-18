@@ -72,8 +72,8 @@ val call_no_reply : t ->
 
 (** {6 Private proxies} *)
 
-(** The two following module interface and implementation are helpers
-    for using private proxies. A private proxy is just a bormal proxy
+(** The two following module interface and implementations are helpers
+    for using private proxies. A private proxy is just a normal proxy
     but defined as a private type, to avoid incorrect use. *)
 
 type proxy = t

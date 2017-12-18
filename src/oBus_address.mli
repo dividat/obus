@@ -12,7 +12,7 @@
 (** {6 Types} *)
 
 type guid = OBus_uuid.t
-    (** A unique address identifier. Each server listenning address'
+    (** A unique address identifier. Each server's listening address
         has a unique one. *)
 
 (** Type of an address *)

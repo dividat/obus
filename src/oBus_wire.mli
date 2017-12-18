@@ -10,11 +10,11 @@
 (** Message serialization/deserialization *)
 
 exception Data_error of string
-  (** Exception raised a message can not be sent. The parameter is an
+  (** Exception raised when a message can not be sent. The parameter is an
       error message.
 
-      Possible reasons are: the message is too big or contains too big
-      arrays. *)
+      Possible reasons are: the message is too big or contains arrays
+      that are too big. *)
 
 exception Protocol_error of string
   (** Exception raised when a received message is not valid.

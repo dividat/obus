@@ -9,14 +9,14 @@
 
 (** Local D-Bus objects *)
 
-(** This module allow you to create D-Bus objects and export them on a
+(** This module allows you to create D-Bus objects and export them on a
     connection, allowing other programs to acccess them. *)
 
 (** {6 Types} *)
 
 type 'a t
   (** Type of local D-Bus objects. It contains informations needed by
-      obus to export it on a connection and dispatch incomming method
+      obus to export it on a connection and dispatch incoming method
       calls.
 
       ['a] is the type of value that may be attached to this
@@ -71,7 +71,7 @@ val owner : 'a t -> OBus_peer.t option
 
 val exports : 'a t -> Set.Make(OBus_connection).t React.signal
   (** [exports obj] is a signal holding the list of connnections on
-      which the object is exproted. *)
+      which the object is exported. *)
 
 val introspect : 'a t -> OBus_introspect.interface list
   (** [introspect obj] returns the introspection of all interfaces
@@ -150,11 +150,11 @@ val add_interfaces : 'a t -> 'a interface list -> unit
 
 val remove_interfaces : 'a t -> 'a interface list -> unit
   (** [remove_interaces obj ifaces] removes informations about the
-      given interfaces from [obj]. If [obj] do not implement some of
+      given interfaces from [obj]. If [obj] does not implement some of
       the interfaces, it does nothing. *)
 
 val remove_interfaces_by_names : 'a t -> OBus_name.interface list -> unit
-  (** Same as {!remove_interfaces} by takes only the interface names
+  (** Same as {!remove_interfaces} but takes only the interface names
       as argument. *)
 
 (** {8 Well-known interfaces} *)
@@ -180,7 +180,7 @@ val signal_info : 'a OBus_member.Signal.t -> 'b signal_info
 val property_r_info : ('a, [ `readable ]) OBus_member.Property.t -> ('b t -> 'a React.signal) -> 'b property_info
   (** [property_r_info desc get] defines a read-only property. [get]
       is called once when data is attached to an object with
-      {!attach}. It must returns a signal holding the current value of
+      {!attach}. It must return a signal holding the current value of
       the property. *)
 
 val property_w_info : ('a, [ `writable ]) OBus_member.Property.t -> ('b t -> 'a -> unit Lwt.t) -> 'b property_info

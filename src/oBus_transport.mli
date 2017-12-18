@@ -22,7 +22,7 @@ val capabilities : t -> OBus_auth.capability list
   (** Returns the capabilities of the transport *)
 
 val shutdown : t -> unit Lwt.t
-  (** [shutdown tr] free resources allocated by the given transport *)
+  (** [shutdown tr] frees resources allocated by the given transport *)
 
 val make :
   ?switch : Lwt_switch.t ->
@@ -36,7 +36,7 @@ val make :
 
       Notes:
       - message reading/writing are serialized by obus, so there is no
-      need to handle concurrent access to transport
+        need to handle concurrent access to transport
   *)
 
 val loopback : unit -> t
@@ -47,7 +47,7 @@ val socket : ?switch : Lwt_switch.t -> ?capabilities : OBus_auth.capability list
   (** [socket ?switch ?capabilities socket] creates a socket
       transport.
 
-      @param capabilities defaults to [[]]. For unix socket, the
+      @param capabilities defaults to [[]]. For unix sockets, the
       [`Unix_fd] capability is accepted. *)
 
 val of_addresses :
@@ -58,22 +58,22 @@ val of_addresses :
   (OBus_address.guid * t) Lwt.t
     (** [of_addresses ?switch ?capabilities ?mechanisms addresses] tries to:
 
-        - connects to the server using one of the given given addresses,
-        - authenticates ourself to the server using [mechanisms], which
-        defaults to {!OBus_auth.Client.default_mechanisms},
-        - negociates [capabilities], which defaults to
-        {!OBus_auth.capabilities}
+        - connect to the server using one of the given given addresses,
+        - authenticate itself to the server using [mechanisms], which
+          defaults to {!OBus_auth.Client.default_mechanisms},
+        - negotiates [capabilities], which defaults to
+          {!OBus_auth.capabilities}
 
-        If all succeed, it returns the server address guid and the
+        If all succeeded, it returns the server address guid and the
         newly created transport, which is ready to send and receive
         messages.
 
         Note about errors:
         - if one of the addresses is not valid, or [addresses = []],
-        it raises [Invalid_argument],
+          it raises [Invalid_argument],
         - if all connections failed, it raises the exception raised
-        by the try on first address, which is either a [Failure] or
-        a [Unix.Unix_error]
+          by the try on first address, which is either a [Failure] or
+          a [Unix.Unix_error]
         - if the authentication failed, a {!OBus_auth.Auth_error} is
-        raised
+          raised
     *)

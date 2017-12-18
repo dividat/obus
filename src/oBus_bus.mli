@@ -16,14 +16,14 @@ type t = OBus_connection.t
 val session : ?switch : Lwt_switch.t -> unit -> t Lwt.t
   (** [session ?switch ()] returns a connection to the user session
       message bus. Subsequent calls to {!session} will return the same
-      bus.  OBus will automatically exits the program when an error
-      happen on the session bus. You can change this behavior by
+      bus.  OBus will automatically exit the program when an error
+      happens on the session bus. You can change this behavior by
       calling {!OBus_connection.set_on_disconnect}. *)
 
 val system : ?switch : Lwt_switch.t -> unit -> t Lwt.t
   (** [system ?switch ()] returns a connection to the system message
       bus. As for {!session}, subsequent calls to {!system} will
-      return the same bus. However, if the connection is closed or it
+      return the same bus. However, if the connection is closed or
       crashes, {!system} will try to reopen it. *)
 
 (** {6 Creation} *)
@@ -45,7 +45,7 @@ val register_connection : OBus_connection.t -> unit Lwt.t
 val exit_on_disconnect : exn -> 'a
   (** Function which exit the program as follow:
 
-      - if [exn] is {!OBus_connection.Connection_lost}, it exits
+      - if [exn] is {!OBus_connection.Connection_lost}, it exits the
       program with a return code of 0
 
       - if [exn] is a fatal error, it prints a message on stderr and
@@ -55,13 +55,13 @@ val exit_on_disconnect : exn -> 'a
 (** {6 Peer/proxy helpers} *)
 
 val get_peer : t -> OBus_name.bus -> OBus_peer.t Lwt.t
-  (** [get_peer bus name] return the peer owning the bus name
+  (** [get_peer bus name] returns the peer owning the bus name
       [name]. If the service is not activated and is activable, then
       it is started *)
 
 val get_proxy : t -> OBus_name.bus -> OBus_path.t -> OBus_proxy.t Lwt.t
-  (** [get_proxy bus name path] resolve [name] with {!get_peer} and
-      return a proxy for the object with path [path] on this
+  (** [get_proxy bus name path] resolves [name] with {!get_peer} and
+      returns a proxy for the object with path [path] on this
       service *)
 
 (** {6 Bus names} *)
@@ -90,7 +90,7 @@ type request_name_result =
     | `In_queue
         (** You will get the name when it will be available *)
     | `Exists
-        (** Somebody else already have the name and nobody specify
+        (** Somebody else already have the name and nobody specified
             what to do in this case *)
     | `Already_owner
         (** You already have the name *) ]
@@ -103,9 +103,9 @@ val request_name : t ->
   (** Request a name to the bus. This is the way to acquire a
       well-know name.
 
-      All optionnal parameters default to [false], their meaning are:
+      All optional parameters default to [false], their meaning are:
 
-      - [allow_replacement]: allow other application to steal you the name
+      - [allow_replacement]: allow other application to steal this name from you
       - [replace_existing]: replace any existing owner of the name
       - [do_not_queue]: do not queue if not available
   *)
@@ -131,8 +131,8 @@ val start_service_by_name : t -> OBus_name.bus -> start_service_by_name_result L
   (** Start a service on the given bus by its name *)
 
 val name_has_owner : t -> OBus_name.bus -> bool Lwt.t
-  (** Return [true] if the service is currently running, i.e. some
-      application offer it on the message bus *)
+  (** Returns [true] if the service is currently running, i.e. some
+      application offers it on the message bus *)
 
 val list_names : t -> OBus_name.bus list Lwt.t
   (** List names currently running on the message bus *)
@@ -149,7 +149,7 @@ val get_name_owner : t -> OBus_name.bus -> OBus_name.bus Lwt.t
       [Name_has_no_owner] if the given name does not have an owner. *)
 
 val list_queued_owners : t -> OBus_name.bus -> OBus_name.bus list Lwt.t
-  (** Return the connection unique names of applications waiting for a
+  (** Return the connection unique names of the applications waiting for a
       name *)
 
 (** {6 Messages routing} *)
@@ -159,7 +159,7 @@ val list_queued_owners : t -> OBus_name.bus -> OBus_name.bus list Lwt.t
     several times. *)
 
 exception Match_rule_invalid of string
-  (** Exception raised when the program try to send an invalid match
+  (** Exception raised when the program tries to send an invalid match
       rule. This should never happen since values of type
       {!OBus_match.rule} are always valid. *)
 
@@ -195,8 +195,8 @@ val get_id : t -> OBus_uuid.t Lwt.t
 (** {6 Signals} *)
 
 val name_owner_changed : t -> (OBus_name.bus * OBus_name.bus * OBus_name.bus) OBus_signal.t
-  (** This signal is emited each time the owner of a name (unique
-      connection name or service name) change. *)
+  (** This signal is emitted each time the owner of a name (unique
+      connection name or service name) changes. *)
 
 val name_lost : t -> OBus_name.bus OBus_signal.t
 val name_acquired : t -> OBus_name.bus OBus_signal.t

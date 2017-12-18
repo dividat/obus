@@ -13,12 +13,12 @@ type data = string
     (** Data for an authentication mechanism *)
 
 exception Auth_failure of string
-  (** Exception raise when authentication fail *)
+  (** Exception raised when authentication fail *)
 
-(** List of capatilities clients/servers may support *)
+(** List of capabilities clients/servers may support *)
 type capability =
     [ `Unix_fd
-        (** The transport support unix fd passing *) ]
+        (** The transport supports unix fd passing *) ]
 
 val capabilities : capability list
   (** List of all capabilities *)
@@ -32,8 +32,8 @@ type stream
 val make_stream : recv : (unit -> string Lwt.t) -> send : (string -> unit Lwt.t) -> stream
   (** Creates a stream for authentication.
 
-      @param recv must reads a complete line, ending with ["\r\n"],
-      @param send must sends the given line. *)
+      @param recv must read a complete line, ending with ["\r\n"],
+      @param send must send the given line. *)
 
 val stream_of_channels : Lwt_io.input_channel * Lwt_io.output_channel -> stream
   (** Creates a stream from a pair of channels *)
@@ -45,7 +45,7 @@ val stream_of_fd : Lwt_unix.file_descr -> stream
       much. *)
 
 val max_line_length : int
-  (** Maximum lenght accepted for lines of the authentication
+  (** Maximum length accepted for lines of the authentication
       protocol. Beyond this limit, authentication will fail. *)
 
 (** Client-side authentication *)
@@ -54,7 +54,7 @@ module Client : sig
   (** {6 Mechanisms} *)
 
   type mechanism_return =
-      (** Value returned by the client-side of an auth mechanism *)
+      (** Value returned by the client side of an auth mechanism *)
     | Mech_continue of data
         (** Continue the authentication with this response *)
     | Mech_ok of data
@@ -124,7 +124,7 @@ module Server : sig
     | Mech_continue of data
         (** Continue the authentication with this challenge *)
     | Mech_ok of int option
-        (** The client is authentified. The argument is the user id
+        (** The client is authenticated. The argument is the user id
             the client is authenticated with. *)
     | Mech_reject
         (** The client is rejected by the mechanism *)
@@ -141,7 +141,7 @@ module Server : sig
       (** Must abort the mechanism *)
   end
 
-  (** A server-size authentication mechanism *)
+  (** A server-side authentication mechanism *)
   type mechanism = {
     mech_name : string;
     (** The mechanism name *)
@@ -173,7 +173,7 @@ module Server : sig
     (** Launch server-side authentication on the given stream. On
         success it returns the client uid and the list of capabilities
         that were successfully negotiated. A client uid of {!None}
-        means that the clinet used anonymous authentication, and may
+        means that the client used anonymous authentication, and may
         be disconnected according to server policy.
 
         Note: [authenticate] does not read the first zero byte. You

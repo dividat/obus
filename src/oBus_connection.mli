@@ -9,7 +9,7 @@
 
 (** D-Bus connections *)
 
-(** This module implement manipulation of a D-Bus connection. A D-Bus
+(** This module implements manipulation of a D-Bus connection. A D-Bus
     connection is a channel opened with another application which also
     implement the D-Bus protocol. It is used to exchange D-Bus
     messages. *)
@@ -28,7 +28,7 @@ val compare : t -> t -> int
     connection to another application without passing through a
     message bus.
 
-    Otherwise you should use [OBus_bus] or immediatly call
+    Otherwise you should use [OBus_bus] or immediately call
     [OBus_bus.register_connection] after the creation. *)
 
 val of_addresses : ?switch : Lwt_switch.t -> ?shared : bool -> OBus_address.t list -> t Lwt.t
@@ -41,7 +41,7 @@ val of_addresses : ?switch : Lwt_switch.t -> ?shared : bool -> OBus_address.t li
       the default behaviour. *)
 
 val loopback : unit -> t
-  (** Creates a connection with a loopback transport *)
+  (** Create a connection with a loopback transport *)
 
 val close : t -> unit Lwt.t
   (** Close a connection.
@@ -59,20 +59,20 @@ val active : t -> bool React.signal
   (** Returns whether a connection is active. *)
 
 exception Connection_closed
-  (** Raise when trying to use a closed connection *)
+  (** Raised when trying to use a closed connection *)
 
 exception Connection_lost
   (** Raised when a connection has been lost *)
 
 exception Transport_error of exn
-  (** Raised when something wrong happen on the backend transport of
+  (** Raised when something wrong happens on the backend transport of
       the connection *)
 
 (** {6 Informations} *)
 
 val name : t -> OBus_name.bus
   (** Returns the unique name of the connection. This is only
-      meaning-full is the other endpoint of the connection is a
+      meaningful is the other endpoint of the connection is a
       message bus. If it is not the case it returns [""]. *)
 
 (**/**)
@@ -100,18 +100,18 @@ val send_message : t -> OBus_message.t -> unit Lwt.t
 
 val send_message_with_reply : t -> OBus_message.t -> OBus_message.t Lwt.t
   (** [send_message_with_reply connection message] Send a message and
-      return a thread which wait for the reply (which is a method
+      return a thread which waits for the reply (which is a method
       return or an error) *)
 
 val send_message_keep_serial : t -> OBus_message.t -> unit Lwt.t
-  (** Same as {!send_message} but do not generate a serial for the
+  (** Same as {!send_message} but does not generate a serial for the
       message.
 
       Warning: this is for implementing a D-Bus daemon only, not for
       casual use. *)
 
 val send_message_keep_serial_with_reply : t -> OBus_message.t -> OBus_message.t Lwt.t
-  (** Same as {!send_message_with_reply} but do not generate a serial
+  (** Same as {!send_message_with_reply} but does not generate a serial
       for the message.
 
       Warning: this is for implementing a D-Bus daemon only, not for
@@ -151,11 +151,11 @@ val method_call_no_reply :
   member : OBus_name.member ->
   i_args : 'a OBus_value.C.sequence ->
   'a -> unit Lwt.t
-  (** Same as {!method_call} but do not expect a reply *)
+  (** Same as {!method_call} but does not expect a reply *)
 
 (** {6 General purpose filters} *)
 
-(** Filters are functions whose are applied on all incoming and
+(** Filters are functions that are applied on all incoming and
     outgoing messages.
 
     For incoming messages they are called before dispatching, for
@@ -173,14 +173,14 @@ type filter = OBus_message.t -> OBus_message.t option
       dispatched or not sent *)
 
 val incoming_filters : t -> filter Lwt_sequence.t
-  (** Filters applied on incomming messages *)
+  (** Filters applied on incoming messages *)
 
 val outgoing_filters : t -> filter Lwt_sequence.t
   (** Filters appllied on outgoing messages *)
 
-(** {6 Connection's local Storage} *)
+(** {6 Connection local Storage} *)
 
-(** Connection's local storage allow to attach values to a
+(** Connection local storage allows to attach values to a
     connection. It is internally used by modules of obus. *)
 
 type 'a key
@@ -224,8 +224,8 @@ val of_transport : ?switch : Lwt_switch.t -> ?guid : OBus_address.guid -> ?up : 
       [up] tell whether the connection is initially up or down,
       default is [true]. *)
 
-(** A connection can be up or down, expect for connection created with
-    [of_transport], newly created connection are always up.
+(** A connection can be up or down. Except for connections created with
+    [of_transport], newly created connections are always up.
 
     When a connection is down, messages will not be dispatched *)
 

@@ -9,18 +9,18 @@
 
 (** OBus extended introspection *)
 
-(** By default, introspection document do not convey semantical
-    informations, such as enumeration or flags. However it is possible
+(** By default, introspection documents do not convey semantical
+    information, such as enumerations or flags. However it is possible
     to attach information to interfaces and members.
 
-    This module implement an extended introspection format, which can
+    This module implements an extended introspection format, which can
     be encoded into standard introspection documents by using
     annotations.
 *)
 
 (** {6 Annotations} *)
 
-(** The following annotations are used to encode additionnal
+(** The following annotations are used to encode additional
     informations into D-Bus introspection documents *)
 
 val obus_enum : string
@@ -132,9 +132,9 @@ type term =
           - the arguments taken by the function associated to the
             symbol *)
   | Tuple of term list
-      (** A list of terms, packed into a tuple. Tuple are always
-          mapped to D-Bus structure. Moreover it is ensured that there
-          is never type of the form [Tuple[t]]. *)
+      (** A list of terms, packed into a tuple. Tuples are always
+          mapped to D-Bus structures. Moreover it is ensured that there
+          is never a type of the form [Tuple[t]]. *)
 
 val term : string -> term list -> term
   (** Construct a term *)

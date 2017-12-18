@@ -40,7 +40,7 @@ val sender : t -> OBus_peer.t
   (** [sender context] returns the peer who sends the message *)
 
 val destination : t -> OBus_peer.t
-  (** [destinatino context] returns the peer to which the message were
+  (** [destinatino context] returns the peer to which the message was
       sent *)
 
 val flags : t -> OBus_message.flags

@@ -9,23 +9,23 @@
 
 (** Bus name resolving *)
 
-(** This module implement bus names resolving and monitoring.
+(** This module implements bus name resolving and monitoring.
 
     - for a unique connection name, it means being notified when the
-    peer owning this name exit
+    peer owning this name exits
 
     - for a well-known name such as "org.domain.Serivce" it means
     knowing at each time who is the current owner and being notified
-    when the service owner change (i.e. the process implementing the
+    when the service owner changes (i.e. the process implementing the
     service change).
 
     It is basically an abstraction for {!OBus_bus.get_owner} and
     {!OBus_bus.name_owner_changed}. You should prefer using it instead
     of implementing your own name monitoring because resolver are
-    shared and obus internally use them, so this avoid extra messages.
+    shared and obus internally uses them, so this avoids extra messages.
 
     Note that with a peer-to-peer connection, resolver will always act
-    as if they is no owner. *)
+    as if there is no owner. *)
 
 val make : ?switch : Lwt_switch.t -> OBus_connection.t -> OBus_name.bus -> OBus_name.bus React.signal Lwt.t
   (** [make ?switch bus name] creates a resolver which will monitor
