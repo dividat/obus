@@ -12,7 +12,13 @@ The recommended way to install obus and its dependencies is via
 [opam](https://opam.ocaml.org/): `opam install obus`.
 
 ## Manual installation from sources
-To build and install obus:
+Make sure you have [jbuilder](https://github.com/janestreet/jbuilder)
+installed, and install all the missing dependencies listed in
+the output of this command:
+
+    $ jbuilder external-lib-deps @install --missing
+
+Then you can build and install obus:
 
     $ jbuilder build -p obus
     $ jbuilder install -p obus

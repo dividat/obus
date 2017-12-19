@@ -19,8 +19,6 @@ depends: [
   "xmlm"
   "camlp4"
   "lwt" {>= "2.7.0"}
-  "lwt.ppx"
-  "lwt.unix"
   "lwt_react"
   "ocaml-migrate-parsetree"
   "ppx_tools"
