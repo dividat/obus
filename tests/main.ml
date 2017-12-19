@@ -61,7 +61,7 @@ let () = Lwt_main.run begin
     "serialization", Test_serialization.test;
     "string validation", Test_validation.test;
     "authentication", Test_auth.test;
-    "communication", Test_communication.test;
+    (*"communication", Test_communication.test;*)
     "garbage collection", Test_gc.test;
   ]
 end
