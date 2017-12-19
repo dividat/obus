@@ -2,7 +2,6 @@
 
 (library
  ((name OBus_idl)
-  (public_name obus.idl)
   (synopsis "DSL for defining D-Bus interfaces")
   (libraries (obus_data camlp4.lib))))
 

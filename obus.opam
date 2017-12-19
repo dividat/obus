@@ -12,15 +12,19 @@ build: [
 ]
 
 install: [[ "jbuilder" "install" "-p" name ]]
-remove:  [[ "jbuilder" "remove" "-p" name ]]
+remove:  [[ "jbuilder" "uninstall" "-p" name ]]
 
 depends: [
-  "lwt" {>= "2.7.0"}
-  "lwt_react"
+  "jbuilder" {build}
   "xmlm"
+  "camlp4"
+  "lwt" {>= "2.7.0"}
+  "lwt.ppx"
+  "lwt.unix"
+  "lwt_react"
   "ocaml-migrate-parsetree"
   "ppx_tools"
-  "jbuilder" {build}
+  "ppx_metaquot"
 ]
 
 available: [ ocaml-version >= "4.02.3" ]

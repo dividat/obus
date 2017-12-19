@@ -25,7 +25,8 @@ Manual installation from sources
 
 To build and install obus:
 
-    $ jbuilder ...
+    $ jbuilder build -p obus
+    $ jbuilder install -p obus
 
 ### Documentation and manual pages _(optional)_
 
@@ -44,12 +45,14 @@ Using the library
 
 OBus installs the following packages:
 
-* `obus`: the core library, implementing the D-Bus protocol,
-* `obus.notification`: interface to the freedesktop Notification service,
-* `obus.hal`: interface to the freedesktop Hal service,
-* `obus.upower`: interface to the freedesktop UPower service,
-* `obus.udisks`: interface to the freedesktop UDisks service,
-* `obus.policykit`: interface to the freedesktop PolicyKit service.
+* `obus`: the core library, implementing the D-Bus protocol
+* `obus.ppx`: syntax extensions to aid registering OBus exceptions
+* `obus.notification`: interface to the freedesktop Notification service
+* `obus.network_manager`: interface to the freedesktop NetworkManager service
+* `obus.hal`: interface to the freedesktop Hal service
+* `obus.upower`: interface to the freedesktop UPower service
+* `obus.udisks`: interface to the freedesktop UDisks service
+* `obus.policykit`: interface to the freedesktop PolicyKit service
 
 Using the tools
 ---------------

@@ -2,7 +2,7 @@
 
 (library
  ((name obus_udisks)
-  (name obus.udisks)
+  (public_name obus.udisks)
   (wrapped false)
   (libraries (lwt obus))
   (preprocess (pps (lwt.ppx ppx_obus)))))
