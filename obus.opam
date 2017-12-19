@@ -1,0 +1,26 @@
+opam-version: "1.2"
+
+maintainer: "jeremie@dimino.org"
+authors: [ "Jérémie Dimino" ]
+homepage: "https://github.com/diml/obus"
+bug-reports: "https://github.com/diml/obus/issues"
+dev-repo: "https://github.com/diml/obus.git"
+license: "BSD3"
+
+build: [
+  [ "jbuilder" "build" "-p" name "-j" jobs ]
+]
+
+install: [[ "jbuilder" "install" "-p" name ]]
+remove:  [[ "jbuilder" "remove" "-p" name ]]
+
+depends: [
+  "lwt" {>= "2.7.0"}
+  "lwt_react"
+  "xmlm"
+  "ocaml-migrate-parsetree"
+  "ppx_tools"
+  "jbuilder" {build}
+]
+
+available: [ ocaml-version >= "4.02.3" ]

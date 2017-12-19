@@ -7,16 +7,16 @@
   (libraries (camlp4.lib obus_data OBus_idl))))
 
 (executables
- ((names (obus_gen_interface
-          obus_gen_client obus_gen_server
-          obus_idl2xml obus_xml2idl))
+ ((names        (obus_gen_interface obus_gen_client obus_gen_server obus_idl2xml obus_xml2idl))
+  (public_names (obus-gen-interface obus-gen-client obus-gen-server obus-idl2xml obus-xml2idl))
   (modules (obus_gen_interface
             obus_gen_client obus_gen_server
             obus_idl2xml obus_xml2idl))
   (libraries (tools_util obus_data))))
 
 (executables
- ((names (obus_dump obus_introspect))
+ ((names        (obus_dump obus_introspect))
+  (public_names (obus-dump obus-introspect))
   (modules (obus_dump obus_introspect))
   (libraries (tools_util lwt obus_data obus))
   (preprocess (pps (lwt.ppx)))))

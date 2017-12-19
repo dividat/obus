@@ -2,6 +2,7 @@
 
 (library
  ((name obus_upower)
+  (name obus.upower)
   (wrapped false)
   (libraries (lwt obus))
   (preprocess (pps (lwt.ppx ppx_obus)))))
@@ -11,4 +12,4 @@
   (deps    (uPower_interfaces.obus))
   (action
    (chdir ${SCOPE_ROOT}
-    (run tools/obus_gen_interface.exe -keep-common -o ${path-no-dep:uPower_interfaces} ${<})))))
+    (run ${bin:obus-gen-interface} -keep-common -o ${path-no-dep:uPower_interfaces} ${<})))))

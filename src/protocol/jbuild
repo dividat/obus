@@ -2,6 +2,7 @@
 
 (library
  ((name obus)
+  (public_name obus)
   (wrapped false)
   (synopsis "Pure Ocaml implementation of the D-Bus protocol")
   (libraries (lwt.unix lwt_react xmlm obus_data))
@@ -14,4 +15,4 @@
   (deps    (oBus_interfaces.obus))
   (action
    (chdir ${SCOPE_ROOT}
-    (run tools/obus_gen_interface.exe -keep-common -o ${path-no-dep:oBus_interfaces} ${<})))))
+    (run ${bin:obus-gen-interface} -keep-common -o ${path-no-dep:oBus_interfaces} ${<})))))
