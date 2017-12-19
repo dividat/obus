@@ -1,5 +1,10 @@
 (jbuild_version 1)
 
+(alias
+ ((name examples)
+  (deps (bus_functions.exe hello.exe list_services.exe monitor.exe eject.exe signals.exe
+         battery_monitoring.exe network_manager.exe notify.exe ping.exe pong.exe))))
+
 (executables
  ((names   (bus_functions hello list_services monitor))
   (modules (bus_functions hello list_services monitor))

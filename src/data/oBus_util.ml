@@ -9,8 +9,6 @@
 
 let section = Lwt_log.Section.make "obus(util)"
 
-open Printf
-
 let rec assoc x = function
   | [] -> None
   | (k, v) :: _ when k = x -> Some(v)
@@ -41,7 +39,7 @@ type ('a, 'b) either =
   | InL of 'a
   | InR of 'b
 
-let rec split f l =
+let split f l =
   List.fold_right (fun x (a, b) -> match f x with
                      | InL x -> (x :: a, b)
                      | InR x -> (a, x :: b)) l ([], [])

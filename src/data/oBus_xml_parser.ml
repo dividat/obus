@@ -130,7 +130,7 @@ let one p (typ, f) =
     | Some x -> x
     | None -> ksprintf (failwith p) "element missing: %S" (string_of_type typ)
 
-let rec any p (typ, f) =
+let any p (typ, f) =
   let success, rest = OBus_util.part_map f p.children in
   p.children <- rest;
   success

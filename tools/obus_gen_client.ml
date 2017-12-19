@@ -9,7 +9,6 @@
 
 open Printf
 open OBus_introspect_ext
-open OBus_value
 
 let prog_name = Filename.basename Sys.argv.(0)
 

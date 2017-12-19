@@ -11,7 +11,7 @@ let section = Lwt_log.Section.make "obus(value)"
 
 open Format
 
-let rec print_seq left right sep f pp l =
+let print_seq left right sep f pp l =
   pp_print_string pp left;
   begin match l with
     | [] -> ()
