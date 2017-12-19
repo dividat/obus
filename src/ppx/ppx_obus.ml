@@ -11,9 +11,17 @@ let raise_errorf ?sub ?if_highlight ?loc message =
     raise (Location.Error err))
 
 
+let find_attr_expr s attrs =
+  let expr_of_payload = function
+    | PStr [{ pstr_desc = Pstr_eval (e, _); _ }] -> Some e
+    | _ -> None in
+  try expr_of_payload (snd (List.find (fun (x, _) -> x.Asttypes.txt = s) attrs))
+  with Not_found -> None
+
+
 let register_obus_exception = function
   | { pstr_desc = Pstr_exception exn; pstr_loc } ->
-    (match Ast_convenience.find_attr_expr "obus" exn.pext_attributes with
+    (match find_attr_expr "obus" exn.pext_attributes with
     | Some expr ->
       let registerer typ =
         let loc = pstr_loc in

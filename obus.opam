@@ -21,8 +21,8 @@ depends: [
   "lwt" {>= "2.7.0"}
   "lwt_react"
   "ocaml-migrate-parsetree"
-  "ppx_tools"
   "ppx_metaquot"
 ]
 
-available: [ ocaml-version >= "4.02.3" ]
+# Required by ppx_metaquot
+available: [ ocaml-version >= "4.04.1" ]

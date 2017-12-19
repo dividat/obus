@@ -7,6 +7,8 @@ provide D-Bus services.
 OBus uses the cooperative threading library Lwt, which makes it
 very simple to fully exploit the asynchronous nature of D-Bus.
 
+[![Build Status](https://travis-ci.org/steinuil/obus.svg?branch=jbuilder)](https://travis-ci.org/steinuil/obus)
+
 ## Installation
 The recommended way to install obus and its dependencies is via
 [opam](https://opam.ocaml.org/): `opam install obus`.

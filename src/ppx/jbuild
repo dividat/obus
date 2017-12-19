@@ -5,5 +5,5 @@
   (public_name obus.ppx)
   (kind ppx_rewriter)
   (synopsis "Utility syntax for defining D-Bus errors")
-  (libraries (ocaml-migrate-parsetree ppx_tools))
+  (libraries (ocaml-migrate-parsetree))
   (preprocess (pps (ppx_metaquot)))))
