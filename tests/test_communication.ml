@@ -22,8 +22,9 @@ let rec run_tests con = function
   | 0 ->
       return ()
   | n ->
+      let message = Gen_random.message () in
       let%lwt () = OBus_connection.send_message con {
-        Gen_random.message () with
+        message with
           destination = name;
           typ = Signal(["obus"; "test"], "obus.test", "test");
       } in

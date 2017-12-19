@@ -1,0 +1,14 @@
+(jbuild_version 1)
+
+(library
+ ((name obus_hal)
+  (wrapped false)
+  (libraries (lwt obus))
+  (preprocess (pps (lwt.ppx ppx_obus)))))
+
+(rule
+ ((targets (hal_interfaces.ml hal_interfaces.mli))
+  (deps    (hal_interfaces.obus))
+  (action
+   (chdir ${SCOPE_ROOT}
+    (run tools/obus_gen_interface.exe -keep-common -o ${path-no-dep:hal_interfaces} ${<})))))

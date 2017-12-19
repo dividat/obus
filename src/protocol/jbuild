@@ -1,0 +1,17 @@
+(jbuild_version 1)
+
+(library
+ ((name obus)
+  (wrapped false)
+  (synopsis "Pure Ocaml implementation of the D-Bus protocol")
+  (libraries (lwt.unix lwt_react xmlm obus_data))
+  (preprocess (pps (lwt.ppx ppx_obus)))))
+
+(ocamllex (oBus_address_lexer oBus_match_rule_lexer))
+
+(rule
+ ((targets (oBus_interfaces.ml oBus_interfaces.mli))
+  (deps    (oBus_interfaces.obus))
+  (action
+   (chdir ${SCOPE_ROOT}
+    (run tools/obus_gen_interface.exe -keep-common -o ${path-no-dep:oBus_interfaces} ${<})))))

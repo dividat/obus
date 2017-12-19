@@ -17,15 +17,16 @@ let user_id = Unix.getuid ()
 
 let test_mech mech =
   try%lwt
-    let%lwt () = Lwt.join [OBus_auth.Client.authenticate
-                             ~stream:(OBus_auth.stream_of_channels (client_ic, client_oc)) ()
-                           >> return ();
-                           OBus_auth.Server.authenticate
-                             ~user_id
-                             ~mechanisms:[mech]
-                             ~guid
-                             ~stream:(OBus_auth.stream_of_channels (server_ic, server_oc)) ()
-                           >> return ()] in
+    let%lwt () = Lwt.join
+      [(let%lwt _ = OBus_auth.Client.authenticate
+                    ~stream:(OBus_auth.stream_of_channels (client_ic, client_oc)) () in
+       return ());
+       let%lwt _ = OBus_auth.Server.authenticate
+                     ~user_id
+                     ~mechanisms:[mech]
+                     ~guid
+                     ~stream:(OBus_auth.stream_of_channels (server_ic, server_oc)) () in
+       return ()] in
     let%lwt () = Lwt_io.printlf "authentication %s works!" (OBus_auth.Server.mech_name mech) in
     return true
   with exn ->

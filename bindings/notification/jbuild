@@ -1,0 +1,14 @@
+(jbuild_version 1)
+
+(library
+ ((name obus_notification)
+  (wrapped false)
+  (libraries (lwt obus))
+  (preprocess (pps (lwt.ppx ppx_obus)))))
+
+(rule
+ ((targets (notification_interfaces.ml notification_interfaces.mli))
+  (deps    (notification_interfaces.obus))
+  (action
+   (chdir ${SCOPE_ROOT}
+    (run tools/obus_gen_interface.exe -keep-common -o ${path-no-dep:notification_interfaces} ${<})))))

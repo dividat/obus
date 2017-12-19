@@ -1,0 +1,9 @@
+(jbuild_version 1)
+
+(library
+ ((name obus_data)
+  (libraries (lwt.unix xmlm))
+  (wrapped false)
+  (preprocess (pps (lwt.ppx)))))
+
+(ocamllex (oBus_type_ext_lexer))

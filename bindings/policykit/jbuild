@@ -1,0 +1,14 @@
+(jbuild_version 1)
+
+(library
+ ((name obus_policy_kit)
+  (wrapped false)
+  (libraries (lwt obus))
+  (preprocess (pps (lwt.ppx ppx_obus)))))
+
+(rule
+ ((targets (policy_kit_interfaces.ml policy_kit_interfaces.mli))
+  (deps    (policy_kit_interfaces.obus))
+  (action
+   (chdir ${SCOPE_ROOT}
+    (run tools/obus_gen_interface.exe -keep-common -o ${path-no-dep:policy_kit_interfaces} ${<})))))
