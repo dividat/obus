@@ -593,9 +593,9 @@ that will receive new connections.
 -----------------------------------------------------
 
 
-**********************
-Low-level use of D-Bus
-**********************
+*********************
+Low-level use of OBus
+*********************
 
 This document describes the low-level part of obus.
 

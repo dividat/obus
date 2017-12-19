@@ -1,5 +1,6 @@
+open Migrate_parsetree.OCaml_current.Ast.Parsetree
 open Migrate_parsetree
-open Parsetree
+(*open Parsetree*)
 
 
 let rewriter_name = "ppx_obus"
@@ -72,5 +73,5 @@ let obus_mapper =
 
 
 let () =
-  Driver.register ~name:rewriter_name Versions.ocaml_406
+  Driver.register ~name:rewriter_name Versions.ocaml_current
     (fun _ _ -> obus_mapper)

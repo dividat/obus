@@ -7,10 +7,8 @@ bug-reports: "https://github.com/diml/obus/issues"
 dev-repo: "https://github.com/diml/obus.git"
 license: "BSD3"
 
-build: [
-  [ "jbuilder" "build" "-p" name "-j" jobs ]
-]
-
+build: [[ "jbuilder" "build" "-p" name "-j" jobs ]]
+build-test: [[ "jbuilder" "build" "tests/main.exe" ]]
 install: [[ "jbuilder" "install" "-p" name ]]
 remove:  [[ "jbuilder" "uninstall" "-p" name ]]
 
