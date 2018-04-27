@@ -3,7 +3,7 @@
 (library
  ((name OBus_idl)
   (synopsis "DSL for defining D-Bus interfaces")
-  (libraries (obus_data camlp4.lib))))
+  (libraries (obus.internals camlp4.lib))))
 
 (rule
  ((targets (oBus_idl.ml))

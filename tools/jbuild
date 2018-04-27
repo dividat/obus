@@ -4,7 +4,7 @@
  ((name tools_util)
   (modules (term utils))
   (wrapped false)
-  (libraries (camlp4.lib obus_data OBus_idl))))
+  (libraries (camlp4.lib obus.internals OBus_idl))))
 
 (executables
  ((names        (obus_gen_interface obus_gen_client obus_gen_server obus_idl2xml obus_xml2idl))
@@ -12,11 +12,11 @@
   (modules (obus_gen_interface
             obus_gen_client obus_gen_server
             obus_idl2xml obus_xml2idl))
-  (libraries (tools_util obus_data))))
+  (libraries (tools_util obus.internals))))
 
 (executables
  ((names        (obus_dump obus_introspect))
   (public_names (obus-dump obus-introspect))
   (modules (obus_dump obus_introspect))
-  (libraries (tools_util lwt obus_data obus))
+  (libraries (tools_util lwt obus.internals obus))
   (preprocess (pps (lwt.ppx)))))

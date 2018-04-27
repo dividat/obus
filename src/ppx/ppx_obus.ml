@@ -1,6 +1,5 @@
 open Migrate_parsetree.OCaml_current.Ast.Parsetree
 open Migrate_parsetree
-(*open Parsetree*)
 
 
 let rewriter_name = "ppx_obus"

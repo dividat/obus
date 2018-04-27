@@ -1,7 +1,8 @@
 (jbuild_version 1)
 
 (library
- ((name obus_data)
+ ((name obus.internals)
+  (public_name obus.internals)
   (libraries (lwt.unix xmlm))
   (wrapped false)
   (preprocess (pps (lwt.ppx)))))
