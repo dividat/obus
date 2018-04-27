@@ -95,7 +95,7 @@ let print_impl oc name members symbols annotations =
                 | (false, name) -> fprintf oc " %s" name
                 | (true, name) -> fprintf oc " ~%s" name)
              (make_names i_args);
-           output_string oc " =\n    [%lwt raise (Failure \"not implemented\")]\n"
+           output_string oc " =\n    Lwt.fail (Failure \"not implemented\")\n"
        | _ ->
            ())
     members;

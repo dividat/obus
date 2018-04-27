@@ -220,13 +220,13 @@ let compare_method (type d) name method_ =
    +-----------------------------------------------------------------+ *)
 
 let unknown_method interface member arguments =
-  [%lwt raise
+  Lwt.fail
     (OBus_error.Unknown_method
        (Printf.sprintf
           "Method %S with signature %S on interface %S does not exist"
           member
           (OBus_value.string_of_signature (OBus_value.V.type_of_sequence arguments))
-          interface))]
+          interface))
 
 (* Executes a method *)
 let execute (type d) method_info context obj arguments =
@@ -354,7 +354,7 @@ let handle_message connection info message =
                     (* Then we search in dynamic objects *)
                     match search_dynamic path info.dynamics with
                       | None ->
-                          [%lwt raise No_such_object]
+                          Lwt.fail No_such_object
                       | Some(path, dynamic) ->
                           let module M = (val dynamic : Dynamic) in
                           let%lwt result =
@@ -368,10 +368,10 @@ let handle_message connection info message =
                             | `Success obj ->
                                 dispatch context obj interface member (OBus_message.body message)
                             | `Failure Not_found ->
-                                [%lwt raise No_such_object]
+                                Lwt.fail No_such_object
                             | `Failure exn ->
                                 let%lwt () = Lwt_log.error ~section ~exn "dynamic object handler failed with" in
-                                [%lwt raise No_such_object]
+                                Lwt.fail No_such_object
             in
             send_reply context reply
           with
@@ -824,18 +824,18 @@ let properties (type d) () =
          let handler obj (interface, member) =
            match binary_search compare_interface interface obj.interfaces with
              | -1 ->
-                 [%lwt raise (OBus_error.Unknown_interface(Printf.sprintf "Interface %S does not exists" interface))]
+                 Lwt.fail (OBus_error.Unknown_interface(Printf.sprintf "Interface %S does not exists" interface))
              | i ->
                  match binary_search compare_property member obj.interfaces.(i).i_properties with
                    | -1 ->
-                       [%lwt raise (OBus_error.Unknown_property(Printf.sprintf "Property %S on interface %S does not exists" member interface))]
+                       Lwt.fail (OBus_error.Unknown_property(Printf.sprintf "Property %S on interface %S does not exists" member interface))
                    | j ->
                        match obj.properties.(i).(j) with
                          | Some instance ->
                              let module I = (val instance : Property_instance) in
                              Lwt.return (OBus_value.C.make_single (Property.typ I.info) (S.value I.signal))
                          | None ->
-                             [%lwt raise (OBus_error.Failed(Printf.sprintf "Property %S on interface %S is not readable" member interface))]
+                             Lwt.fail (OBus_error.Failed(Printf.sprintf "Property %S on interface %S is not readable" member interface))
        end in
        (module M : Method_info with type obj = d t));
 
@@ -859,7 +859,7 @@ let properties (type d) () =
          let handler obj interface =
            match binary_search compare_interface interface obj.interfaces with
              | -1 ->
-                 [%lwt raise (OBus_error.Unknown_interface(Printf.sprintf "Interface %S does not exists" interface))]
+                 Lwt.fail (OBus_error.Unknown_interface(Printf.sprintf "Interface %S does not exists" interface))
              | i ->
                  let count = Array.length obj.properties.(i) in
                  let rec loop j acc =
@@ -900,11 +900,11 @@ let properties (type d) () =
          let handler obj (interface, member, value) =
            match binary_search compare_interface interface obj.interfaces with
              | -1 ->
-                 [%lwt raise (OBus_error.Unknown_interface(Printf.sprintf "Interface %S does not exists" interface))]
+                 Lwt.fail (OBus_error.Unknown_interface(Printf.sprintf "Interface %S does not exists" interface))
              | i ->
                  match binary_search compare_property member obj.interfaces.(i).i_properties with
                    | -1 ->
-                       [%lwt raise (OBus_error.Unknown_property(Printf.sprintf "Property %S on interface %S does not exists" member interface))]
+                       Lwt.fail (OBus_error.Unknown_property(Printf.sprintf "Property %S on interface %S does not exists" member interface))
                    | j ->
                        let module P = (val obj.interfaces.(i).i_properties.(j) : Property_info with type obj = d t) in
                        match P.set with
@@ -913,7 +913,7 @@ let properties (type d) () =
                                | `Success value ->
                                    f obj value
                                | `Failure OBus_value.C.Signature_mismatch ->
-                                   [%lwt raise
+                                   Lwt.fail
                                      (OBus_error.Failed
                                         (Printf.sprintf
                                            "invalid type(%S) for property %S on interface %S, should be %S"
@@ -923,12 +923,12 @@ let properties (type d) () =
                                            interface
                                            (OBus_value.string_of_signature
                                               [OBus_value.C.type_single
-                                                 (Property.typ P.info)])))]
+                                                 (Property.typ P.info)])))
                                | `Failure exn ->
-                                   [%lwt raise exn]
+                                   Lwt.fail exn
                            end
                          | None ->
-                             [%lwt raise (OBus_error.Property_read_only(Printf.sprintf "property %S on interface %S is not writable" member interface))]
+                             Lwt.fail (OBus_error.Property_read_only(Printf.sprintf "property %S on interface %S is not writable" member interface))
        end in
        (module M : Method_info with type obj = d t));
     |]

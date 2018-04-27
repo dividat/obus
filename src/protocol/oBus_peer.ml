@@ -51,12 +51,12 @@ let get_machine_id peer =
   try
     Lwt.return (OBus_uuid.of_string mid)
   with exn ->
-    [%lwt raise exn]
+    Lwt.fail exn
 
 let wait_for_exit peer =
   match peer.name with
     | "" ->
-        [%lwt raise (Invalid_argument "OBus_peer.wait_for_exit: peer has no name")]
+        Lwt.fail (Invalid_argument "OBus_peer.wait_for_exit: peer has no name")
     | name ->
         let switch = Lwt_switch.create () in
         let%lwt owner = OBus_resolver.make ~switch peer.connection name in

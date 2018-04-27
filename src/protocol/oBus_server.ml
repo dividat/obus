@@ -76,7 +76,7 @@ let read_nonce fd =
   let rec loop ofs len =
     Lwt_unix.read fd nonce ofs len >>= function
       | 0 ->
-          [%lwt raise End_of_file]
+          Lwt.fail End_of_file
       | n ->
           if n = len then
             Lwt.return (Bytes.unsafe_to_string nonce)
@@ -180,7 +180,7 @@ let handle_client server listener fd address =
     let buf = Bytes.create 1 in
     Lwt_unix.read fd buf 0 1 >>= function
       | 0 ->
-          [%lwt raise (OBus_auth.Auth_failure "did not receive the initial null byte")]
+          Lwt.fail (OBus_auth.Auth_failure "did not receive the initial null byte")
       | 1 ->
           let user_id =
             try
@@ -253,7 +253,7 @@ let make_socket domain typ address =
   with Unix_error(err, _, _) as exn ->
     let%lwt () = Lwt_log.error_f ~section "failed to create listenning socket with %s: %s" (string_of_address address) (Unix.error_message err) in
     let%lwt () = Lwt_unix.close fd in
-    [%lwt raise exn]
+    Lwt.fail exn
 
 let make_path path =
   make_socket PF_UNIX SOCK_STREAM (ADDR_UNIX(path))
@@ -286,7 +286,7 @@ let fd_addr_list_of_address address = match OBus_address.name address with
               Lwt.return [(fd, OBus_address.make ~name:"unix" ~args:[("path", path)])]
           end
         | _ ->
-            [%lwt raise (Invalid_argument "OBus_transport.connect: invalid unix address, must supply exactly one of 'path', 'abstract', 'tmpdir'")]
+            Lwt.fail (Invalid_argument "OBus_transport.connect: invalid unix address, must supply exactly one of 'path', 'abstract', 'tmpdir'")
     end
 
   | ("tcp" | "nonce-tcp") as name -> begin
@@ -349,17 +349,17 @@ let fd_addr_list_of_address address = match OBus_address.name address with
             if fd_addr_list = [] then
               (* If no fds have been created, raises the first failure: *)
               match OBus_util.find_map (function `Failure e -> Some e | `Success _ -> None) results with
-                | Some exn -> [%lwt raise exn]
+                | Some exn -> Lwt.fail exn
                 | None -> assert false
             else
               Lwt.return fd_addr_list
     end
 
   | "autolaunch" ->
-      [%lwt raise (Failure "OBus_server.make_server: autolaunch can not be used as a listenning address")]
+      Lwt.fail (Failure "OBus_server.make_server: autolaunch can not be used as a listenning address")
 
   | name ->
-      [%lwt raise (Failure ("OBus_server.make_server: unknown transport type: " ^ name))]
+      Lwt.fail (Failure ("OBus_server.make_server: unknown transport type: " ^ name))
 
 (* +-----------------------------------------------------------------+
    | Servers                                                         |
@@ -391,7 +391,7 @@ let make_lowlevel ?switch ?(capabilities=OBus_auth.capabilities) ?mechanisms ?(a
   Lwt_switch.check switch;
   match addresses with
     | [] ->
-        [%lwt raise (Invalid_argument "OBus_server.make: no addresses given")]
+        Lwt.fail (Invalid_argument "OBus_server.make: no addresses given")
 
     | addresses ->
         (* Construct the list of all listening fds for each
@@ -425,7 +425,7 @@ let make_lowlevel ?switch ?(capabilities=OBus_auth.capabilities) ?mechanisms ?(a
                      Lwt.return ())
               result_by_address
           in
-          [%lwt raise exn]
+          Lwt.fail exn
         in
 
         match OBus_util.find_map (function `Success _ -> None | `Failure e -> Some e) result_by_address with

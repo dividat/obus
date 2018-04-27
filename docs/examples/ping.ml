@@ -34,5 +34,5 @@ let _ = Lwt_main.run begin
         let%lwt () = printl "You must run pong to try this sample!" in
         exit 1
     | exn ->
-        [%lwt raise exn]
+        Lwt.fail exn
 end

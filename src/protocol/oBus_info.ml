@@ -21,7 +21,7 @@ let read_uuid_file file =
     Lwt.return (OBus_uuid.of_string line)
   with exn ->
     ignore (Lwt_log.error_f ~section ~exn "failed to read the local machine uuid from file %S" file);
-    [%lwt raise exn]
+    Lwt.fail exn
 
 let machine_uuid = lazy(
   try%lwt
@@ -30,5 +30,5 @@ let machine_uuid = lazy(
     try%lwt
       read_uuid_file "/etc/machine-id"
     with _ ->
-      [%lwt raise exn]
+      Lwt.fail exn
 )

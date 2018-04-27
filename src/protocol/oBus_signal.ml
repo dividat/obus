@@ -261,7 +261,7 @@ let connect ?switch sd =
                | None -> "<any>")
             (OBus_peer.name sd.peer)
         in
-        [%lwt raise exn]
+        Lwt.fail exn
     ) in
 
     let event = E.with_finaliser (finalise disconnect) (E.map snd (sd.map event)) in
@@ -277,7 +277,7 @@ let connect ?switch sd =
     Lwt.return event
   with exn ->
     let%lwt () = Lwt_switch.turn_off resources_switch in
-    [%lwt raise exn]
+    Lwt.fail exn
 
 (* +-----------------------------------------------------------------+
    | Emitting signals                                                |

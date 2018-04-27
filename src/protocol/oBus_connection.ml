@@ -248,7 +248,7 @@ let send_message_backend connection gen_serial reply_waiter_opt message =
          match apply_filters "outgoing" message active.outgoing_filters with
            | None ->
                let%lwt () = Lwt_log.debug ~section "outgoing message dropped by filters" in
-               [%lwt raise (Failure "message dropped by filters")]
+               Lwt.fail (Failure "message dropped by filters")
 
            | Some message ->
                if not closed then begin
@@ -276,12 +276,12 @@ let send_message_backend connection gen_serial reply_waiter_opt message =
                  | OBus_wire.Data_error _ as exn ->
                      (* The message can not be marshaled for some
                         reason. This is not a fatal error. *)
-                     [%lwt raise exn]
+                     Lwt.fail exn
 
                  | Lwt.Canceled ->
                      (* Message sending have been canceled by the
                         user. This is not a fatal error either. *)
-                     [%lwt raise Lwt.Canceled]
+                     Lwt.fail Lwt.Canceled
 
                  | exn ->
                      (* All other errors are considered as fatal. They
@@ -289,11 +289,11 @@ let send_message_backend connection gen_serial reply_waiter_opt message =
                         message has been partially sent on the
                         connection, so the message stream is broken *)
                      let%lwt () = kill connection exn in
-                     [%lwt raise exn]
+                     Lwt.fail exn
        end else
          match connection#state with
            | Killed | Closed ->
-               [%lwt raise Connection_closed]
+               Lwt.fail Connection_closed
            | Active _ ->
                Lwt.return ())
 
@@ -332,13 +332,13 @@ let method_call_with_message ~connection ?destination ~path ?interface ~member ~
         try
           Lwt.return (o_msg, OBus_value.C.cast_sequence o_args body)
         with OBus_value.C.Signature_mismatch ->
-          [%lwt raise (OBus_message.invalid_reply i_msg (OBus_value.C.type_sequence o_args) o_msg)]
+          Lwt.fail (OBus_message.invalid_reply i_msg (OBus_value.C.type_sequence o_args) o_msg)
       end
     | { OBus_message.typ = OBus_message.Error(_, error_name);
         OBus_message.body = OBus_value.V.Basic(OBus_value.V.String message) :: _  } ->
-        [%lwt raise (OBus_error.make error_name message)]
+        Lwt.fail (OBus_error.make error_name message)
     | { OBus_message.typ = OBus_message.Error(_, error_name) } ->
-        [%lwt raise (OBus_error.make error_name "")]
+        Lwt.fail (OBus_error.make error_name "")
     | _ ->
         assert false
 
@@ -400,21 +400,21 @@ let dispatch_message active message =
                     Lwt.return [OBus_value.V.basic_string (OBus_uuid.to_string uuid)]
                   with exn ->
                     if OBus_error.name exn = OBus_error.ocaml then
-                      [%lwt raise
+                      Lwt.fail
                         (OBus_error.Failed
                            (Printf.sprintf
                               "Cannot read the machine uuid file (%s)"
-                              OBus_config.machine_uuid_file))]
+                              OBus_config.machine_uuid_file))
                     else
-                      [%lwt raise exn]
+                      Lwt.fail exn
                 end
               | _ ->
-                  [%lwt raise
+                  Lwt.fail
                     (OBus_error.Unknown_method
                        (Printf.sprintf
                           "Method %S with signature %S on interface \"org.freedesktop.DBus.Peer\" does not exist"
                           member
-                          (OBus_value.string_of_signature (OBus_value.V.type_of_sequence body))))]
+                          (OBus_value.string_of_signature (OBus_value.V.type_of_sequence body))))
           in
           send_message active.wrapper {
             flags = { no_reply_expected = true; no_auto_start = true };
@@ -454,7 +454,7 @@ let rec dispatch_forever active =
       Lwt.choose [OBus_transport.recv active.transport; active.abort_recv_waiter]
     with exn ->
       let%lwt () = kill active.wrapper (Transport_error exn) in
-      [%lwt raise exn]
+      Lwt.fail exn
   in
   match apply_filters "incoming" message active.incoming_filters with
     | None ->

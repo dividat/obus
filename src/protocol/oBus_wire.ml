@@ -841,7 +841,7 @@ let write_message oc ?byte_order msg =
     | str, [||] ->
         Lwt_io.write oc str
     | _ ->
-        [%lwt raise (Data_error "Cannot send a message with file descriptors on a channel")]
+        Lwt.fail (Data_error "Cannot send a message with file descriptors on a channel")
 
 type writer = {
   w_channel : Lwt_io.output_channel;
@@ -1287,7 +1287,7 @@ let read_message_with_fds reader  =
              Lwt_log.error_f ~section "cannot close file descriptor: %s" (Unix.error_message err))
         !consumed_fds
     in
-    [%lwt raise (map_exn protocol_error exn)]
+    Lwt.fail (map_exn protocol_error exn)
 
 (* +-----------------------------------------------------------------+
    | Size computation                                                |

@@ -478,7 +478,4 @@ let () =
     interfaces;
 
   close_out oc_impl;
-  close_out oc_intf;
-
-  printf "file \"%s.ml\" written\n" prefix;
-  printf "file \"%s.mli\" written\n" prefix
+  close_out oc_intf
