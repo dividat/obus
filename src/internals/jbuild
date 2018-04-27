@@ -5,6 +5,6 @@
   (public_name obus.internals)
   (libraries (lwt.unix xmlm))
   (wrapped false)
-  (preprocess (pps (lwt.ppx)))))
+  (preprocess (pps (lwt_ppx)))))
 
 (ocamllex (oBus_type_ext_lexer))

@@ -5,7 +5,7 @@
   (public_name obus.network_manager)
   (wrapped false)
   (libraries (lwt obus))
-  (preprocess (pps (lwt.ppx ppx_obus)))))
+  (preprocess (pps (lwt_ppx ppx_obus)))))
 
 (rule
  ((targets (nm_interfaces.ml nm_interfaces.mli))

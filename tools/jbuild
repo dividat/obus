@@ -19,4 +19,4 @@
   (public_names (obus-dump obus-introspect))
   (modules (obus_dump obus_introspect))
   (libraries (tools_util lwt obus.internals obus))
-  (preprocess (pps (lwt.ppx)))))
+  (preprocess (pps (lwt_ppx)))))

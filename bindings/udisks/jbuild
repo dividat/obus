@@ -5,7 +5,7 @@
   (public_name obus.udisks)
   (wrapped false)
   (libraries (lwt obus))
-  (preprocess (pps (lwt.ppx ppx_obus)))))
+  (preprocess (pps (lwt_ppx ppx_obus)))))
 
 (rule
  ((targets (uDisks_interfaces.ml uDisks_interfaces.mli))

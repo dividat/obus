@@ -6,7 +6,7 @@
   (wrapped false)
   (synopsis "Pure Ocaml implementation of the D-Bus protocol")
   (libraries (lwt.unix lwt_react xmlm obus.internals))
-  (preprocess (pps (lwt.ppx ppx_obus)))))
+  (preprocess (pps (lwt_ppx ppx_obus)))))
 
 (ocamllex (oBus_address_lexer oBus_match_rule_lexer))
 

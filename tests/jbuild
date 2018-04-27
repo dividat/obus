@@ -6,7 +6,7 @@
             test_serialization test_validation
             test_auth test_communication test_gc))
   (libraries (lwt obus))
-  (preprocess (pps (lwt.ppx)))))
+  (preprocess (pps (lwt_ppx)))))
 
 (alias
  ((name   runtest)

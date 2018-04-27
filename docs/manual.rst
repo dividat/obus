@@ -86,7 +86,7 @@ Now we can generate the client module::
 
 This will generate ``foo_client.ml`` and ``foo_client.mli``.
 These generated clients can be freely edited, and have to be compiled
-with the ``lwt.ppx`` syntax extension.
+with the ``lwt_ppx`` syntax extension.
 
 Now we can use the ``Foo_client`` module to interact with the service.
 Methods are mapped to functions returning ``Lwt.t`` wrapped values,
