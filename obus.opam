@@ -18,6 +18,7 @@ depends: [
   "camlp4"
   "lwt" {>= "2.7.0"}
   "lwt_ppx"
+  "lwt_log"
   "lwt_react"
   "ocaml-migrate-parsetree"
   "ppx_metaquot"

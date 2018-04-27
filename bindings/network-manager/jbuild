@@ -4,7 +4,7 @@
  ((name obus_network_manager)
   (public_name obus.network_manager)
   (wrapped false)
-  (libraries (lwt obus))
+  (libraries (lwt lwt_log obus))
   (preprocess (pps (lwt_ppx ppx_obus)))))
 
 (rule
