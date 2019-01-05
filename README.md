@@ -7,28 +7,26 @@ provide D-Bus services.
 OBus uses the cooperative threading library Lwt, which makes it
 very simple to fully exploit the asynchronous nature of D-Bus.
 
-[![Build Status](https://travis-ci.org/steinuil/obus.svg?branch=jbuilder)](https://travis-ci.org/steinuil/obus)
-
 ## Installation
 The recommended way to install obus and its dependencies is via
 [opam](https://opam.ocaml.org/): `opam install obus`.
 
 ## Manual installation from sources
-Make sure you have [jbuilder](https://github.com/janestreet/jbuilder)
+Make sure you have [dune](https://dune.build/)
 installed, and install all the missing dependencies listed in
 the output of this command:
 
-    $ jbuilder external-lib-deps @install --missing
+    $ dune external-lib-deps @install --missing
 
 Then you can build and install obus:
 
-    $ jbuilder build -p obus
-    $ jbuilder install -p obus
+    $ dune build -p obus
+    $ dune install -p obus
 
 ### Tests
 To build and execute tests:
 
-    $ jbuilder runtest
+    $ dune runtest
 
 ## Using the library
 OBus installs the following packages:

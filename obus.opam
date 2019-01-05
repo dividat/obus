@@ -7,13 +7,13 @@ bug-reports: "https://github.com/diml/obus/issues"
 dev-repo: "https://github.com/diml/obus.git"
 license: "BSD3"
 
-build: [[ "jbuilder" "build" "-p" name "-j" jobs ]]
-build-test: [[ "jbuilder" "build" "tests/main.exe" ]]
-install: [[ "jbuilder" "install" "-p" name ]]
-remove:  [[ "jbuilder" "uninstall" "-p" name ]]
+build: [[ "dune" "build" "-p" name "-j" jobs ]]
+build-test: [[ "dune" "build" "tests/main.exe" ]]
+install: [[ "dune" "install" "-p" name ]]
+remove:  [[ "dune" "uninstall" "-p" name ]]
 
 depends: [
-  "jbuilder" {build}
+  "dune" {build}
   "xmlm"
   "camlp4"
   "lwt" {>= "2.7.0"}

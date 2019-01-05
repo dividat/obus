@@ -1,9 +1,0 @@
-(jbuild_version 1)
-
-(library
- ((name ppx_obus)
-  (public_name obus.ppx)
-  (kind ppx_rewriter)
-  (synopsis "Utility syntax for defining D-Bus errors")
-  (libraries (ocaml-migrate-parsetree))
-  (preprocess (pps (ppx_metaquot)))))
